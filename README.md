@@ -111,3 +111,8 @@ Abre `http://localhost:5173`.
 | `POST` | `/api/auth/reset-password` | Restablecer contraseña |
 | `POST` | `/api/auth/change-password` | Cambiar contraseña (requiere JWT) |
 | `GET`  | `/api/health` | Health check + estado de BD |
+
+## Flujo de trabajo del equipo
+
+La convención de ramas, revisiones y pull requests se encuentra en
+[`docs/ESTRATEGIA_GITFLOW.md`](docs/ESTRATEGIA_GITFLOW.md).
