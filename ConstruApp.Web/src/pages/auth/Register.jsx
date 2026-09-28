@@ -41,34 +41,105 @@ export default function Register() {
 
       {/* ── Panel izquierdo ─── */}
       <Box sx={{
+        flex: { xs: 'none', md: '0 0 52%' },
+        minHeight: { xs: '220px', md: '100vh' },
         display: { xs: 'none', md: 'flex' },
-        width: '44%', flexDirection: 'column',
-        justifyContent: 'center', alignItems: 'center',
-        bgcolor: ACCENT, p: 6, position: 'relative', overflow: 'hidden', textAlign: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+        flexDirection: 'column',
+        justifyContent: 'flex-end',
+        p: { xs: 4, md: 6 },
+        background: 'linear-gradient(160deg, #060D20 0%, #0B1A35 40%, #0E2040 100%)',
       }}>
-        <Box sx={{ position: 'absolute', top: -80, right: -80, width: 280, height: 280,
-          borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.06)' }} />
-        <Box sx={{ position: 'absolute', bottom: 60, left: -60, width: 200, height: 200,
-          borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.04)' }} />
-
-        <Box sx={{ bgcolor: 'rgba(255,255,255,0.15)', borderRadius: 3, p: 1.5, display: 'inline-flex', mb: 3, zIndex: 1 }}>
-          <ConstructionIcon sx={{ color: 'white', fontSize: 38 }} />
+        <Box sx={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden', opacity: 0.18 }}>
+          <svg width="100%" height="100%" viewBox="0 0 600 500" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid2" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.5"/>
+              </pattern>
+            </defs>
+            <rect width="600" height="500" fill="url(#grid2)" />
+            <rect x="50" y="300" width="60" height="200" fill="rgba(255,255,255,0.5)" />
+            <rect x="130" y="250" width="80" height="250" fill="rgba(255,255,255,0.4)" />
+            <rect x="230" y="180" width="100" height="320" fill="rgba(255,255,255,0.55)" />
+            <rect x="350" y="220" width="70" height="280" fill="rgba(255,255,255,0.35)" />
+            <line x1="460" y1="80" x2="460" y2="350" stroke="rgba(255,255,255,0.7)" strokeWidth="4" />
+            <line x1="460" y1="80" x2="560" y2="90" stroke="rgba(255,255,255,0.7)" strokeWidth="3" />
+            <line x1="460" y1="80" x2="380" y2="88" stroke="rgba(255,255,255,0.5)" strokeWidth="2" />
+            <rect x="450" y="75" width="20" height="20" fill="rgba(245,158,11,0.8)" />
+            <circle cx="520" cy="60" r="25" fill="rgba(245,158,11,0.15)" />
+            <circle cx="520" cy="60" r="14" fill="rgba(245,158,11,0.25)" />
+          </svg>
         </Box>
-        <Typography variant="h4" fontWeight={800} color="white" sx={{ mb: 2, zIndex: 1 }}>
-          Solicitá acceso<br />
-          <Box component="span" sx={{ color: 'rgba(255,255,255,0.75)' }}>a ConstruApp.</Box>
-        </Typography>
-        <Typography sx={{ color: 'rgba(255,255,255,0.65)', fontSize: 15, lineHeight: 1.7, maxWidth: 300, mb: 5, zIndex: 1 }}>
-          Completá el formulario y un administrador revisará tu solicitud. Te notificaremos por correo.
-        </Typography>
 
-        <Box sx={{ border: '1px solid rgba(255,255,255,0.2)', borderRadius: 3, p: 3, maxWidth: 280, zIndex: 1 }}>
-          <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, mb: 0.5 }}>
-            Ya confían en ConstruApp
+        <Box sx={{
+          position: 'absolute', top: -40, right: -60,
+          width: 280, height: 280, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(245,158,11,0.1) 0%, transparent 70%)',
+          zIndex: 0,
+        }} />
+
+        <Box sx={{
+          position: 'absolute', top: { xs: 24, md: 32 }, left: { xs: 24, md: 36 },
+          display: 'flex', alignItems: 'center', gap: 1.5, zIndex: 1,
+        }}>
+          <Box sx={{
+            bgcolor: '#F59E0B', borderRadius: '10px',
+            width: 36, height: 36,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 16px rgba(245,158,11,0.4)',
+          }}>
+            <ConstructionIcon sx={{ color: '#fff', fontSize: 20 }} />
+          </Box>
+          <Typography sx={{ fontWeight: 800, fontSize: 18, color: '#fff', letterSpacing: '-0.4px' }}>
+            ConstruApp
           </Typography>
-          <Typography variant="h3" fontWeight={800} sx={{ color: 'white' }}>500+</Typography>
-          <Typography sx={{ color: 'rgba(255,255,255,0.65)', fontSize: 14 }}>proyectos publicados</Typography>
         </Box>
+
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
+          <Typography sx={{
+            fontWeight: 800,
+            fontSize: { xs: 28, md: 42 },
+            color: '#fff',
+            lineHeight: 1.15,
+            letterSpacing: '-1px',
+            mb: 2,
+            textShadow: '0 2px 20px rgba(0,0,0,0.4)',
+          }}>
+            Gestión de obra<br />para Costa Rica.
+          </Typography>
+          <Typography sx={{
+            color: 'rgba(255,255,255,0.62)',
+            fontSize: { xs: 14, md: 15.5 },
+            lineHeight: 1.7,
+            maxWidth: 420,
+          }}>
+            Conectamos proyectos de construcción con los mejores constructores y proveedores del país.
+          </Typography>
+
+          <Box sx={{ display: 'flex', gap: 1, mt: 3, flexWrap: 'wrap' }}>
+            {['Cotización IA', 'Marketplace', 'Seguimiento en obra'].map(t => (
+              <Box key={t} sx={{
+                px: 1.5, py: 0.5,
+                borderRadius: '20px',
+                bgcolor: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                backdropFilter: 'blur(8px)',
+              }}>
+                <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>
+                  {t}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+
+        <Typography sx={{
+          position: 'absolute', bottom: 20, right: 24, zIndex: 1,
+          fontSize: 11, color: 'rgba(255,255,255,0.25)',
+        }}>
+          © 2025 ConstruApp
+        </Typography>
       </Box>
 
       {/* ── Panel derecho ─── */}
