@@ -1,6 +1,6 @@
-# CLAUDE.md
+# DEVELOPMENT.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guía de desarrollo y arquitectura del proyecto ConstruApp.
 
 ## Project Overview
 
