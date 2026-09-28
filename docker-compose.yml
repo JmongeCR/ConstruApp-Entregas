@@ -1,0 +1,37 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: construapp-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "ConstruApp2026!"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P ConstruApp2026! -Q 'SELECT 1' -C -N || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: construapp-api
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=ConstruAppDB;User Id=sa;Password=ConstruApp2026!;TrustServerCertificate=true;MultipleActiveResultSets=true"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:

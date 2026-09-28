@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MailKit" Version="4.10.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <!-- Swashbuckle 6.9 es la versión estable que funciona correctamente en .NET 10 -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ConstruApp.Core\ConstruApp.Core.csproj" />
+    <ProjectReference Include="..\ConstruApp.Infrastructure\ConstruApp.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!--
+    Build y copia del frontend React al publicar en Release.
+    Requiere Node.js instalado en la máquina de CI/build.
+  -->
+  <Target Name="BuildFrontend" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <Message Text="▶ Instalando dependencias del frontend..." Importance="high" />
+    <Exec Command="npm ci --prefer-offline" WorkingDirectory="$(MSBuildProjectDirectory)/../ConstruApp.Web" />
+    <Message Text="▶ Compilando frontend React (producción)..." Importance="high" />
+    <Exec Command="npm run build" WorkingDirectory="$(MSBuildProjectDirectory)/../ConstruApp.Web" />
+    <Message Text="▶ Copiando dist/ → wwwroot/..." Importance="high" />
+    <ItemGroup>
+      <FrontendFiles Include="$(MSBuildProjectDirectory)/../ConstruApp.Web/dist/**/*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(FrontendFiles)"
+          DestinationFiles="@(FrontendFiles->'$(MSBuildProjectDirectory)/wwwroot/%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Message Text="✅ Frontend copiado a wwwroot/." Importance="high" />
+  </Target>
+
+  <!-- Incluir wwwroot/uploads/ en publish aunque esté vacío -->
+  <ItemGroup>
+    <None Include="wwwroot\uploads\.gitkeep" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
