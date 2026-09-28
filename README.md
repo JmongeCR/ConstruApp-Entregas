@@ -83,9 +83,9 @@ La migración y el seed se aplican automáticamente al iniciar.
 
 | Email | Password | Rol |
 |-------|----------|-----|
-| `admin@construapp.cr` | `Test1234!` | Admin |
-| `cliente@construapp.cr` | `Test1234!` | Cliente |
-| `constructor@construapp.cr` | `Test1234!` | Constructor |
+| `admin@test.com` | `Test1234!` | Admin |
+| `cliente@test.com` | `Test1234!` | Cliente |
+| `constructor@test.com` | `Test1234!` | Constructor |
 
 ### Frontend
 
