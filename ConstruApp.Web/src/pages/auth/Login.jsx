@@ -175,7 +175,7 @@ export default function Login() {
           position: 'absolute', bottom: 20, right: 24, zIndex: 1,
           fontSize: 11, color: 'rgba(255,255,255,0.25)',
         }}>
-          © 2025 Click Me · Universidad Fidélitas SC-603
+          © 2025 ConstruApp
         </Typography>
       </Box>
 
