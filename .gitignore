@@ -1,0 +1,36 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.log
+*.tmp
+appsettings.Development.json
+appsettings.Production.json
+
+# Node / React
+node_modules/
+dist/
+.env
+.env.local
+.env.production
+ConstruApp.Web/.env*
+
+# Secrets
+*.pfx
+*.p12
+secrets.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Compiled publish output
+publish/
+
+# Rider / VS Code
+.idea/
+.vscode/
+appsettings*.json
+ConstruApp.API/bin/

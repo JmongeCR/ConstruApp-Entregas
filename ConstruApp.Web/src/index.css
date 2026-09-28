@@ -1,0 +1,15 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', 'system-ui', -apple-system, 'Helvetica Neue', sans-serif;
+  background-color: #F8FAFC;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #F1F1F1; }
+::-webkit-scrollbar-thumb { background: #BDBDBD; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9E9E9E; }

@@ -1,0 +1,6 @@
+@ConstruApp.API_HostAddress = http://localhost:5115
+
+GET {{ConstruApp.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
