@@ -330,13 +330,6 @@ export default function Login() {
                 Registrate
               </Link>
             </Typography>
-            <Box sx={{ mt: 1.5 }}>
-              <Link to="/explorar" style={{
-                color: '#A8B8CC', fontSize: 12.5, textDecoration: 'none',
-              }}>
-                Ver constructores sin registrarse →
-              </Link>
-            </Box>
           </Box>
         </Box>
       </Box>
