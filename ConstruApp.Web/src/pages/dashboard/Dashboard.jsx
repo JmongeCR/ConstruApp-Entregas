@@ -32,6 +32,7 @@ import CheckCircleIcon        from '@mui/icons-material/CheckCircle';
 import GppMaybeIcon           from '@mui/icons-material/GppMaybe';
 import BusinessIcon           from '@mui/icons-material/Business';
 import PeopleAltIcon          from '@mui/icons-material/PeopleAlt';
+import CloseIcon              from '@mui/icons-material/Close';
 
 import { useAuth }               from '../../context/AuthContext';
 import { useNotificaciones }     from '../../context/NotificacionesContext';
@@ -1067,101 +1068,89 @@ function DashboardConstructor({ usuario }) {
 
 const ROL_OPTIONS = ['Cliente','Constructor','Proveedor','Admin','Supervisor','MaestroObra','Arquitecto','Ingeniero','Contador'];
 
-function SolicitudCard({ s, onAprobar, onRechazar, actioning }) {
-  const [rolSeleccionado, setRolSeleccionado] = useState(s.rol ?? 'Cliente');
-
-  const fmtFecha = (d) => d ? new Date(d).toLocaleDateString('es-CR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-  const emailVerificado = s.emailConfirmed;
+function SolicitudRow({ s, onAprobar, onRechazar, actioning }) {
+  const [rol, setRol] = useState(s.rol ?? 'Cliente');
+  const dias = s.createdAt ? Math.floor((Date.now() - new Date(s.createdAt)) / 86400000) : null;
+  const cuandoStr = dias === 0 ? 'hoy' : dias === 1 ? 'ayer' : dias != null ? `${dias}d` : '—';
 
   return (
     <Box sx={{
-      border: '1px solid #E2E8F0', borderRadius: '10px', bgcolor: '#fff',
-      p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5,
+      display: 'flex', alignItems: 'center', gap: 2,
+      py: 1.75,
+      borderBottom: '1px solid #F8FAFC',
+      '&:last-child': { borderBottom: 'none' },
     }}>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-        <Avatar sx={{ bgcolor: '#1B3B7A', width: 40, height: 40, fontSize: 15, fontWeight: 700, flexShrink: 0 }}>
-          {s.nombre?.charAt(0).toUpperCase()}
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography fontSize={14} fontWeight={700} color="text.primary" noWrap>{s.nombre}</Typography>
-          <Typography fontSize={12} color="text.secondary" noWrap>{s.email}</Typography>
-          {s.telefono && <Typography fontSize={11.5} color="text.secondary">{s.telefono}</Typography>}
-        </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5, flexShrink: 0 }}>
-          <Chip
-            label={emailVerificado ? 'Email verificado' : 'Sin verificar'}
-            size="small"
-            sx={{
-              fontSize: 10.5, fontWeight: 600, height: 20,
-              bgcolor: emailVerificado ? '#ECFDF5' : '#FEF2F2',
-              color:   emailVerificado ? '#065F46' : '#991B1B',
-            }}
-          />
-          <Typography fontSize={11} color="text.secondary">{fmtFecha(s.createdAt)}</Typography>
-        </Box>
+      <Avatar sx={{ width: 32, height: 32, bgcolor: '#1B3B7A', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+        {s.nombre?.charAt(0).toUpperCase()}
+      </Avatar>
+
+      <Box sx={{ minWidth: 0, flex: '0 0 155px' }}>
+        <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#0F172A', lineHeight: 1.3 }} noWrap>{s.nombre}</Typography>
+        <Typography sx={{ fontSize: 11.5, color: '#94A3B8' }} noWrap>{s.email}</Typography>
       </Box>
 
-      {/* Motivo */}
-      {s.motivoRegistro && (
-        <Box sx={{ bgcolor: '#F8FAFC', borderRadius: '7px', px: 1.5, py: 1 }}>
-          <Typography fontSize={10.5} fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', mb: 0.25 }}>
-            Motivo de registro
-          </Typography>
-          <Typography fontSize={12.5} color="text.primary" sx={{ lineHeight: 1.5 }}>{s.motivoRegistro}</Typography>
-        </Box>
-      )}
+      <Typography sx={{ fontSize: 12.5, color: '#94A3B8', flex: 1, minWidth: 0, fontStyle: s.motivoRegistro ? 'italic' : 'normal' }} noWrap>
+        {s.motivoRegistro || '—'}
+      </Typography>
 
-      {/* Rol selector + actions */}
-      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-        <Box sx={{ flex: 1, minWidth: 140 }}>
-          <Typography fontSize={10.5} fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', mb: 0.4 }}>
-            Asignar rol
-          </Typography>
-          <Box
-            component="select"
-            value={rolSeleccionado}
-            onChange={e => setRolSeleccionado(e.target.value)}
-            sx={{
-              width: '100%', fontSize: 13, fontWeight: 600, color: '#0F172A',
-              border: '1px solid #E2E8F0', borderRadius: '7px', px: 1.25, py: 0.75,
-              bgcolor: '#fff', cursor: 'pointer', outline: 'none',
-              '&:focus': { borderColor: ACCENT },
-            }}
-          >
-            {ROL_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
-          </Box>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 0.75, alignSelf: 'flex-end' }}>
-          <Button
-            size="small" variant="outlined" color="error"
-            disabled={actioning}
-            onClick={() => onRechazar(s.id)}
-            sx={{ fontSize: 12, fontWeight: 600, borderRadius: '8px', py: 0.7 }}
-          >
-            Rechazar
-          </Button>
-          <Button
-            size="small" variant="contained"
-            disabled={actioning}
-            onClick={() => onAprobar(s.id, rolSeleccionado)}
-            sx={{ fontSize: 12, fontWeight: 700, borderRadius: '8px', py: 0.7, bgcolor: '#16A34A', '&:hover': { bgcolor: '#15803D' } }}
-          >
-            Aprobar
-          </Button>
-        </Box>
+      <Box sx={{ flexShrink: 0, textAlign: 'right', minWidth: 44 }}>
+        <Typography sx={{ fontSize: 11.5, color: '#CBD5E1' }}>{cuandoStr}</Typography>
+        {!s.emailConfirmed && (
+          <Typography sx={{ fontSize: 9.5, color: '#F59E0B', fontWeight: 700, letterSpacing: '0.4px' }}>SIN VERIFICAR</Typography>
+        )}
       </Box>
+
+      <Box
+        component="select"
+        value={rol}
+        onChange={e => setRol(e.target.value)}
+        sx={{
+          flexShrink: 0, fontSize: 12, fontWeight: 500,
+          border: '1px solid #E2E8F0', borderRadius: '6px',
+          px: 1, py: 0.5, bgcolor: '#F8FAFC', color: '#334155',
+          outline: 'none', cursor: 'pointer',
+          '&:focus': { borderColor: ACCENT },
+        }}
+      >
+        {ROL_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
+      </Box>
+
+      <Button
+        size="small"
+        disabled={actioning}
+        onClick={() => onAprobar(s.id, rol)}
+        sx={{
+          flexShrink: 0, fontSize: 12, fontWeight: 700,
+          bgcolor: '#DCFCE7', color: '#166534', borderRadius: '6px',
+          px: 1.5, py: 0.5, minWidth: 0,
+          '&:hover': { bgcolor: '#BBF7D0' },
+          '&.Mui-disabled': { opacity: 0.4 },
+        }}
+      >
+        Aprobar
+      </Button>
+
+      <IconButton
+        size="small"
+        disabled={actioning}
+        onClick={() => onRechazar(s.id)}
+        sx={{ flexShrink: 0, color: '#CBD5E1', p: 0.5, '&:hover': { color: '#EF4444', bgcolor: 'rgba(239,68,68,0.06)' } }}
+      >
+        <CloseIcon sx={{ fontSize: 16 }} />
+      </IconButton>
     </Box>
   );
 }
 
 function DashboardAdmin() {
   const navigate = useNavigate();
-  const [stats,      setStats]      = useState(null);
+  const { usuario } = useAuth();
+  const [stats,       setStats]       = useState(null);
   const [solicitudes, setSolicitudes] = useState([]);
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingSol,   setLoadingSol]   = useState(true);
   const [actioning, setActioning] = useState(false);
+  const nombre = usuario?.nombre?.split(' ')[0] ?? 'Admin';
 
   const fetchData = () => {
     adminApi.getStats()
@@ -1215,6 +1204,7 @@ function DashboardAdmin() {
 
   const u = stats?.usuarios ?? {};
   const loading = loadingStats;
+  const pct = u.total ? Math.round((u.activos / u.total) * 100) : 0;
 
   const chartData = [
     { name: 'Activos',    count: u.activos       ?? 0, fill: '#10B981' },
@@ -1225,136 +1215,132 @@ function DashboardAdmin() {
 
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 1 }}>
-        <Box>
-          <Typography variant="h5" sx={{ mb: 0.3, fontWeight: 800 }}>Panel de Administración</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Visión general de la plataforma &middot;{' '}
-            {new Date().toLocaleDateString('es-CR', { day: 'numeric', month: 'long', year: 'numeric' })}
-          </Typography>
+      {/* ── HERO ── dark full-bleed banner */}
+      <Box sx={{
+        bgcolor: '#0F172A',
+        mx: { xs: -2, sm: -3 },
+        mt: -3,
+        px: { xs: 2, sm: 3 },
+        pt: 3, pb: 3.5,
+        mb: 3.5,
+      }}>
+        <Typography sx={{ color: '#334155', fontSize: 11.5, letterSpacing: '0.3px', mb: 1.5 }}>
+          {new Date().toLocaleDateString('es-CR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        </Typography>
+
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2, mb: 3 }}>
+          <Box>
+            <Typography sx={{ color: '#94A3B8', fontSize: 13, mb: 0.4 }}>
+              {greeting()}, {nombre}
+            </Typography>
+            <Typography sx={{ color: '#F8FAFC', fontSize: 28, fontWeight: 800, letterSpacing: '-0.5px', lineHeight: 1.1 }}>
+              Administración
+              {!loadingSol && solicitudes.length > 0 && (
+                <Box component="span" sx={{
+                  ml: 2, fontSize: 12, fontWeight: 700, px: 1, py: 0.3,
+                  bgcolor: '#F59E0B', color: '#0F172A', borderRadius: '5px',
+                  verticalAlign: 'middle',
+                }}>
+                  {solicitudes.length} pendiente{solicitudes.length > 1 ? 's' : ''}
+                </Box>
+              )}
+            </Typography>
+          </Box>
+          <Button
+            onClick={() => navigate('/admin')}
+            sx={{
+              flexShrink: 0, fontSize: 12, color: '#94A3B8', mt: 0.5,
+              border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px',
+              px: 2, py: 0.75, textTransform: 'none',
+              '&:hover': { borderColor: 'rgba(255,255,255,0.2)', color: '#F8FAFC', bgcolor: 'transparent' },
+            }}
+          >
+            Gestionar usuarios
+          </Button>
         </Box>
-        <Button variant="contained" startIcon={<AdminPanelSettingsIcon />} onClick={() => navigate('/admin')}
-          sx={{ bgcolor: '#0F172A', '&:hover': { bgcolor: '#1E293B' } }}>
-          Gestionar usuarios
-        </Button>
+
+        {/* Inline stat strip */}
+        <Box sx={{
+          display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
+          borderTop: '1px solid rgba(255,255,255,0.06)', pt: 2.5,
+        }}>
+          {[
+            { label: 'TOTAL',      value: u.total,          note: 'usuarios',          color: '#F8FAFC' },
+            { label: 'ACTIVOS',    value: u.activos,        note: `${pct}% del total`, color: '#34D399' },
+            { label: 'PENDIENTES', value: u.pendientes,     note: 'esperan revisión',  color: (u.pendientes ?? 0) > 0 ? '#FCD34D' : '#475569' },
+            { label: 'NUEVOS 30D', value: u.nuevosEste30d,  note: 'últimos 30 días',   color: '#F8FAFC' },
+          ].map(({ label, value, note, color }, i) => (
+            <Box key={label} sx={{
+              pl: i > 0 ? { xs: 0, sm: 2.5 } : 0,
+              borderLeft: i > 0 ? { xs: 'none', sm: '1px solid rgba(255,255,255,0.06)' } : 'none',
+              mb: { xs: 1.5, sm: 0 },
+            }}>
+              <Typography sx={{ color: '#475569', fontSize: 10, fontWeight: 600, letterSpacing: '0.8px', mb: 0.75, textTransform: 'uppercase' }}>
+                {label}
+              </Typography>
+              {loading
+                ? <Skeleton width={40} height={28} sx={{ bgcolor: 'rgba(255,255,255,0.08)' }} />
+                : <Typography sx={{ color, fontSize: 26, fontWeight: 800, lineHeight: 1, letterSpacing: '-0.5px' }}>
+                    {value ?? 0}
+                  </Typography>
+              }
+              <Typography sx={{ color: '#334155', fontSize: 11, mt: 0.4 }}>{note}</Typography>
+            </Box>
+          ))}
+        </Box>
       </Box>
 
-      {/* Alert solicitudes */}
-      {!loadingSol && solicitudes.length > 0 && (
-        <AlertBand type="warning"
-          message={`${solicitudes.length} solicitud${solicitudes.length > 1 ? 'es' : ''} pendiente${solicitudes.length > 1 ? 's' : ''} de aprobación.`} />
-      )}
-
-      {/* Stats */}
-      {loading ? (
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 1.5, mb: 3 }}>
-          {[1,2,3,4].map(i => <Skeleton key={i} height={110} variant="rounded" sx={{ borderRadius: '12px' }} />)}
-        </Box>
-      ) : (
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2,1fr)', sm: 'repeat(4,1fr)' }, gap: 1.5, mb: 3 }}>
-          <StatCard label="Usuarios totales" value={u.total}          icon={PeopleAltIcon}   iconBg="#EFF6FF" iconColor={ACCENT}   />
-          <StatCard label="Activos"          value={u.activos}        icon={CheckCircleIcon}  iconBg="#ECFDF5" iconColor="#16A34A" />
-          <StatCard label="Pendientes"       value={u.pendientes}     icon={GppMaybeIcon}     iconBg="#FFFBEB" iconColor="#D97706"
-            sub={u.pendientes > 0 ? 'Esperan aprobación' : undefined} />
-          <StatCard label="Nuevos (30d)"     value={u.nuevosEste30d}  icon={TrendingUpIcon}   iconBg="#EFF6FF" iconColor={ACCENT}  />
-        </Box>
-      )}
-
-      {/* Main grid */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 340px' }, gap: 2 }}>
-
-        {/* LEFT — Solicitudes pendientes */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-
-          <Panel
-            title={`Solicitudes de acceso${solicitudes.length > 0 ? ` (${solicitudes.length})` : ''}`}
-            action={
-              <Button size="small" endIcon={<ArrowForwardIcon sx={{ fontSize: 11 }} />}
-                onClick={() => navigate('/admin')}
-                sx={{ fontSize: 11, textTransform: 'none', color: ACCENT, py: 0 }}>
-                Ver todas
-              </Button>
-            }
-          >
-            {loadingSol ? (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                {[1,2].map(i => <Skeleton key={i} height={140} variant="rounded" sx={{ borderRadius: '10px' }} />)}
-              </Box>
-            ) : solicitudes.length === 0 ? (
-              <Box sx={{ py: 5, textAlign: 'center' }}>
-                <CheckCircleOutlineIcon sx={{ fontSize: 36, color: '#10B981', mb: 1 }} />
-                <Typography fontSize={14} fontWeight={600} color="text.primary">Sin solicitudes pendientes</Typography>
-                <Typography fontSize={13} color="text.secondary" sx={{ mt: 0.5 }}>
-                  Todas las solicitudes de acceso han sido procesadas.
-                </Typography>
-              </Box>
-            ) : (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                {solicitudes.map(s => (
-                  <SolicitudCard
-                    key={s.id}
-                    s={s}
-                    onAprobar={handleAprobar}
-                    onRechazar={handleRechazar}
-                    actioning={actioning}
-                  />
-                ))}
-              </Box>
-            )}
-          </Panel>
-
-          {/* Chart */}
-          {!loading && <StatusBarChart data={chartData} title="Distribución de usuarios" />}
+      {/* ── COLA DE APROBACIONES ── */}
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.75 }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>
+            Cola de aprobaciones
+          </Typography>
+          {!loadingSol && solicitudes.length > 0 && (
+            <Box sx={{
+              width: 20, height: 20, borderRadius: '50%',
+              bgcolor: '#FEF3C7', color: '#92400E',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 700,
+            }}>
+              {solicitudes.length}
+            </Box>
+          )}
         </Box>
 
-        {/* RIGHT */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-
-          {/* Desglose */}
-          <Panel title="Desglose de usuarios" noPad>
-            {[
-              { label: 'Activos',      value: u.activos,       color: '#10B981', pct: u.total },
-              { label: 'Pendientes',   value: u.pendientes,    color: '#F59E0B', pct: u.total },
-              { label: 'Bloqueados',   value: u.bloqueados,    color: '#EF4444', pct: u.total },
-              { label: 'Nuevos (30d)', value: u.nuevosEste30d, color: ACCENT,    pct: u.total },
-            ].map((item, i) => (
-              <Box key={item.label}>
-                {i > 0 && <Divider sx={{ mx: 2.5 }} />}
-                <Box sx={{ px: 2.5, py: 1.4, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: item.color, flexShrink: 0 }} />
-                  <Typography fontSize={13} color="text.secondary" sx={{ flex: 1 }}>{item.label}</Typography>
-                  <Typography fontSize={15} fontWeight={700} color="text.primary">
-                    {loading ? '—' : (item.value ?? 0)}
-                  </Typography>
-                  <Typography fontSize={11.5} color="text.secondary" sx={{ minWidth: 32, textAlign: 'right' }}>
-                    {!loading && item.pct ? `${Math.round(((item.value ?? 0) / item.pct) * 100)}%` : ''}
-                  </Typography>
-                </Box>
-              </Box>
-            ))}
-          </Panel>
-
-          {/* Acciones rápidas */}
-          <Panel title="Acciones rápidas">
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {[
-                { label: 'Gestionar usuarios',    Icon: PeopleIcon,    path: '/admin',       color: ACCENT },
-                { label: 'Ver marketplace',       Icon: FolderOpenIcon, path: '/marketplace', color: '#64748B' },
-              ].map(({ label, Icon, path, color }) => (
-                <Button key={path} fullWidth variant="outlined" startIcon={<Icon />}
-                  onClick={() => navigate(path)}
-                  sx={{ justifyContent: 'flex-start', fontSize: 13, color, borderColor: '#E2E8F0',
-                    '&:hover': { borderColor: color, bgcolor: `${color}10` } }}>
-                  {label}
-                </Button>
+        <Box sx={{ bgcolor: '#fff', border: '1px solid #E2E8F0', borderRadius: '12px', overflow: 'hidden' }}>
+          {loadingSol ? (
+            <Box sx={{ px: 2.5, py: 1.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {[1, 2, 3].map(i => <Skeleton key={i} height={52} variant="rounded" sx={{ borderRadius: '8px' }} />)}
+            </Box>
+          ) : solicitudes.length === 0 ? (
+            <Box sx={{ py: 6, textAlign: 'center' }}>
+              <CheckCircleOutlineIcon sx={{ fontSize: 30, color: '#10B981', mb: 1 }} />
+              <Typography fontSize={13.5} fontWeight={600} color="text.primary">Sin solicitudes pendientes</Typography>
+              <Typography fontSize={12.5} color="text.secondary" sx={{ mt: 0.5 }}>
+                Todas las solicitudes han sido procesadas.
+              </Typography>
+            </Box>
+          ) : (
+            <Box sx={{ px: 2.5 }}>
+              {solicitudes.map(s => (
+                <SolicitudRow
+                  key={s.id}
+                  s={s}
+                  onAprobar={handleAprobar}
+                  onRechazar={handleRechazar}
+                  actioning={actioning}
+                />
               ))}
             </Box>
-          </Panel>
-
-          <ActividadRecienteWidget />
+          )}
         </Box>
       </Box>
+
+      {/* ── CHART ── */}
+      {!loading && (
+        <StatusBarChart data={chartData} title="Distribución de usuarios" />
+      )}
     </Box>
   );
 }
