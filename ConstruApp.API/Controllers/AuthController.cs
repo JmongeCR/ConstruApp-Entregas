@@ -198,7 +198,7 @@ public class AuthController : ControllerBase
         var user = await _userManager.FindByEmailAsync(request.Email);
 
         // Respuesta genérica para no revelar si el email existe
-        if (user is null || !user.Activo)
+        if (user is null)
             return Ok(new { message = "Si el correo está registrado, recibirás un enlace en breve." });
 
         var token    = await _userManager.GeneratePasswordResetTokenAsync(user);
