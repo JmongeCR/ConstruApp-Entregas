@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from
 import { ThemeProvider, CssBaseline, Box, Typography, Avatar, Button, IconButton, Tooltip, Divider, Menu, MenuItem, ListItemIcon } from '@mui/material';
 import theme from './theme/theme';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificacionesProvider } from './context/NotificacionesContext';
 import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
@@ -151,9 +152,11 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+        <NotificacionesProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </NotificacionesProvider>
       </AuthProvider>
     </ThemeProvider>
   );

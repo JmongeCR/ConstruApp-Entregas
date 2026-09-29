@@ -4,7 +4,7 @@
  * Permite uso offline básico del Field App.
  */
 
-const CACHE_NAME     = 'construapp-field-v1';
+const CACHE_NAME     = 'construapp-field-v3';
 const API_PREFIX     = '/api/';
 
 // Assets críticos para el funcionamiento offline del Field App
