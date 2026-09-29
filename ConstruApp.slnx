@@ -2,4 +2,5 @@
   <Project Path="ConstruApp.API/ConstruApp.API.csproj" />
   <Project Path="ConstruApp.Core/ConstruApp.Core.csproj" />
   <Project Path="ConstruApp.Infrastructure/ConstruApp.Infrastructure.csproj" />
+  <Project Path="ConstruApp.Tests/ConstruApp.Tests.csproj" />
 </Solution>

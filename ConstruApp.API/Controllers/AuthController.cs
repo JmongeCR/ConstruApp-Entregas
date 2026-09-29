@@ -102,18 +102,20 @@ public class AuthController : ControllerBase
         if (user is null)
             return Unauthorized(new { message = "Credenciales inválidas." });
 
-        if (user.EstadoCuenta == "Pendiente")
-            return StatusCode(403, new { message = "Tu cuenta está pendiente de aprobación. Recibirás un correo cuando un administrador la revise." });
+        // Validar la contraseña antes de informar el estado de la cuenta evita
+        // que terceros puedan descubrir cuentas registradas usando solo el email.
+        var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
+        if (!result.Succeeded)
+            return Unauthorized(new { message = "Credenciales inválidas." });
+
+        if (user.EstadoCuenta == "Pendiente" || !user.EmailConfirmed)
+            return StatusCode(403, new { message = "Tu cuenta aún no está habilitada. Recibirás un correo cuando un administrador la revise." });
 
         if (user.EstadoCuenta == "Rechazado")
             return StatusCode(403, new { message = "Tu solicitud de acceso fue rechazada. Contactá al administrador para más información." });
 
         if (!user.Activo)
-            return Unauthorized(new { message = "Tu cuenta está suspendida. Contactá al administrador." });
-
-        var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, false);
-        if (!result.Succeeded)
-            return Unauthorized(new { message = "Credenciales inválidas." });
+            return StatusCode(403, new { message = "Tu cuenta está suspendida. Contactá al administrador." });
 
         // Actualizar último acceso
         user.UltimoAcceso = DateTime.UtcNow;
