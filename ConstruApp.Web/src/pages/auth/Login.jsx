@@ -17,6 +17,7 @@ export default function Login() {
   const navigate                = useNavigate();
   const [searchParams]          = useSearchParams();
   const redirectTo              = searchParams.get('redirect') || '/';
+  const verified                = searchParams.get('verified') === '1';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -210,6 +211,12 @@ export default function Login() {
           <Typography sx={{ color: '#7B8EA8', fontSize: 14, mb: 4 }}>
             Ingresá tus credenciales para continuar.
           </Typography>
+
+          {verified && (
+            <Alert severity="success" sx={{ mb: 3, borderRadius: '10px', fontSize: 13 }}>
+              ¡Correo verificado! Tu cuenta está pendiente de aprobación por un administrador.
+            </Alert>
+          )}
 
           {error.msg && (
             <Alert severity={error.severity} sx={{ mb: 3, borderRadius: '10px', fontSize: 13 }}>
