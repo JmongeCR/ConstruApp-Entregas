@@ -329,4 +329,21 @@ public static class EmailTemplates
           <div class=""card-row""><span class=""card-label"">Sistema</span><span class=""card-value"">ConstruApp v1.0</span></div>
         </div>
         <p style=""font-size:13px; color:#64748B;"">Si recibiste este correo, la configuración SMTP está correcta.</p>");
+
+    public static string VerificacionEmail(string nombre, string verifyUrl) =>
+        Base("Verificá tu correo — ConstruApp", $@"
+        <p class=""title"">Verificá tu correo electrónico</p>
+        <p class=""subtitle"">Hola {nombre}, gracias por registrarte en ConstruApp. Hacé clic en el botón para confirmar tu dirección de correo.</p>
+        <div style=""text-align:center; margin: 28px 0;"">
+          <a href=""{verifyUrl}"" style=""background:#1B3B7A; color:#fff; text-decoration:none; padding:14px 32px; border-radius:10px; font-weight:700; font-size:15px; display:inline-block;"">
+            Verificar correo electrónico
+          </a>
+        </div>
+        <p style=""font-size:13px; color:#64748B; text-align:center;"">
+          O copiá este enlace en tu navegador:<br/>
+          <a href=""{verifyUrl}"" style=""color:#2563EB; word-break:break-all;"">{verifyUrl}</a>
+        </p>
+        <p style=""font-size:12px; color:#94A3B8; margin-top:20px; text-align:center;"">
+          Este enlace expira en 24 horas. Si no creaste una cuenta, ignorá este mensaje.
+        </p>");
 }
