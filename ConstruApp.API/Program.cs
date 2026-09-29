@@ -122,7 +122,7 @@ builder.Services.AddSwaggerGen(c =>
 // ── CORS ───────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
-    var devOrigins  = new[] { "http://localhost:5173", "https://localhost:5173" };
+    var devOrigins  = new[] { "http://localhost:5173", "https://localhost:5173", "http://localhost:5174", "https://localhost:5174" };
     var prodOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];
 
     options.AddPolicy("AppPolicy", policy =>
