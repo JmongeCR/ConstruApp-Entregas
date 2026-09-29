@@ -71,7 +71,12 @@ builder.Services.AddAuthorization();
 // ── Servicios ──────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IPermisosService,  PermisosService>();
 builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
-builder.Services.AddScoped<IEmailService,     EmailService>();
+builder.Services.AddHttpClient();
+var resendKey = builder.Configuration["Resend:ApiKey"];
+if (!string.IsNullOrEmpty(resendKey))
+    builder.Services.AddScoped<IEmailService, ResendEmailService>();
+else
+    builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUnitOfWork,       UnitOfWork>();
 
 // ── Controllers + JSON ─────────────────────────────────────────────────────

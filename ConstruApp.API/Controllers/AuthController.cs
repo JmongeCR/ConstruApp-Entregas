@@ -71,7 +71,18 @@ public class AuthController : ControllerBase
             user.Id.ToString(), $"Solicitud de acceso: {user.Email}",
             HttpContext.Connection.RemoteIpAddress?.ToString());
 
-        return Ok(new { message = "Tu solicitud fue enviada. Un administrador revisará tu cuenta y recibirás un correo cuando sea aprobada." });
+        var verToken  = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        var frontend  = _configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+        var verifyUrl = $"{frontend}/verify-email?userId={user.Id}&token={HttpUtility.UrlEncode(verToken)}";
+        await _email.EnviarAsync(new EmailMessage(
+            Para:     user.Email!,
+            Asunto:   "Verificá tu correo — ConstruApp",
+            HtmlBody: EmailTemplates.VerificacionEmail(user.Nombre, verifyUrl),
+            Evento:   "verificacion-email",
+            UsuarioId: user.Id
+        ));
+
+        return Ok(new { message = "Revisá tu correo para verificar tu cuenta. Luego un administrador la aprobará." });
     }
 
     // POST api/auth/change-password
@@ -158,6 +169,26 @@ public class AuthController : ControllerBase
             HttpContext.Connection.RemoteIpAddress?.ToString());
 
         return Ok(await BuildAuthResponseAsync(user));
+    }
+
+    // GET api/auth/confirm-email?userId=...&token=...
+    [HttpGet("confirm-email")]
+    public async Task<IActionResult> ConfirmEmail([FromQuery] int userId, [FromQuery] string token)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user is null)
+            return BadRequest(new { message = "Enlace inválido." });
+
+        var result = await _userManager.ConfirmEmailAsync(user, token);
+        if (!result.Succeeded)
+            return BadRequest(new { message = "El enlace expiró o ya fue usado. Registrate nuevamente." });
+
+        await _auditoria.RegistrarAsync(user.Id, user.Nombre, "VerificacionEmail", "Auth",
+            user.Id.ToString(), "Email verificado correctamente",
+            HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        var frontend = _configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+        return Redirect($"{frontend}/login?verified=1");
     }
 
     // POST api/auth/forgot-password
