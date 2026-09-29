@@ -111,3 +111,9 @@ Abre `http://localhost:5173`.
 | `POST` | `/api/auth/reset-password` | Restablecer contraseña |
 | `POST` | `/api/auth/change-password` | Cambiar contraseña (requiere JWT) |
 | `GET`  | `/api/health` | Health check + estado de BD |
+
+## Base de datos en Azure SQL
+
+Los scripts idempotentes de despliegue, validación, prueba de lectura y
+escritura y configuración de acceso están documentados en
+[`database/azure/README.md`](database/azure/README.md).
