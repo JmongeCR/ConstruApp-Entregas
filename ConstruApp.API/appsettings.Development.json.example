@@ -1,13 +1,18 @@
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=ckmecr-admin-server.database.windows.net,1433;Database=ConstruApp_Sprint1;User Id=TU_USUARIO;Password=TU_PASSWORD;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+    "DefaultConnection": "Server=ckmecr-admin-server.database.windows.net,1433;Database=ConstruAppDB;Authentication=Active Directory Default;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
   },
   "JwtSettings": {
     "SecretKey": "una-clave-secreta-de-al-menos-32-caracteres-segura"
   },
   "Email": {
-    "Usuario": "tu-correo@gmail.com",
-    "Password": "tu-app-password-de-gmail",
+    "Host": "smtp-relay.brevo.com",
+    "Puerto": 587,
+    "Usuario": "XXXXXXXXX@smtp-brevo.com",
+    "Password": "TU-SMTP-KEY-DE-BREVO",
+    "SslEnabled": true,
+    "NombreRemitente": "ConstruApp",
+    "EmailOrigen": "tu-correo@gmail.com",
     "HabilitarEnvio": true
   },
   "Frontend": {
