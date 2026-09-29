@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Box, Typography, Button, Chip, LinearProgress, Skeleton, Divider,
+  Box, Typography, Button, Chip, LinearProgress, Skeleton, Divider, Avatar,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   IconButton, Tooltip,
 } from '@mui/material';
@@ -1065,30 +1065,168 @@ function DashboardConstructor({ usuario }) {
 // DASHBOARD ADMIN
 // ═══════════════════════════════════════════════════════════════════════════════
 
+const ROL_OPTIONS = ['Cliente','Constructor','Proveedor','Admin','Supervisor','MaestroObra','Arquitecto','Ingeniero','Contador'];
+
+function SolicitudCard({ s, onAprobar, onRechazar, actioning }) {
+  const [rolSeleccionado, setRolSeleccionado] = useState(s.rol ?? 'Cliente');
+
+  const fmtFecha = (d) => d ? new Date(d).toLocaleDateString('es-CR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  const emailVerificado = s.emailConfirmed;
+
+  return (
+    <Box sx={{
+      border: '1px solid #E2E8F0', borderRadius: '10px', bgcolor: '#fff',
+      p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5,
+    }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+        <Avatar sx={{ bgcolor: '#1B3B7A', width: 40, height: 40, fontSize: 15, fontWeight: 700, flexShrink: 0 }}>
+          {s.nombre?.charAt(0).toUpperCase()}
+        </Avatar>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography fontSize={14} fontWeight={700} color="text.primary" noWrap>{s.nombre}</Typography>
+          <Typography fontSize={12} color="text.secondary" noWrap>{s.email}</Typography>
+          {s.telefono && <Typography fontSize={11.5} color="text.secondary">{s.telefono}</Typography>}
+        </Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5, flexShrink: 0 }}>
+          <Chip
+            label={emailVerificado ? 'Email verificado' : 'Sin verificar'}
+            size="small"
+            sx={{
+              fontSize: 10.5, fontWeight: 600, height: 20,
+              bgcolor: emailVerificado ? '#ECFDF5' : '#FEF2F2',
+              color:   emailVerificado ? '#065F46' : '#991B1B',
+            }}
+          />
+          <Typography fontSize={11} color="text.secondary">{fmtFecha(s.createdAt)}</Typography>
+        </Box>
+      </Box>
+
+      {/* Motivo */}
+      {s.motivoRegistro && (
+        <Box sx={{ bgcolor: '#F8FAFC', borderRadius: '7px', px: 1.5, py: 1 }}>
+          <Typography fontSize={10.5} fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', mb: 0.25 }}>
+            Motivo de registro
+          </Typography>
+          <Typography fontSize={12.5} color="text.primary" sx={{ lineHeight: 1.5 }}>{s.motivoRegistro}</Typography>
+        </Box>
+      )}
+
+      {/* Rol selector + actions */}
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Box sx={{ flex: 1, minWidth: 140 }}>
+          <Typography fontSize={10.5} fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', mb: 0.4 }}>
+            Asignar rol
+          </Typography>
+          <Box
+            component="select"
+            value={rolSeleccionado}
+            onChange={e => setRolSeleccionado(e.target.value)}
+            sx={{
+              width: '100%', fontSize: 13, fontWeight: 600, color: '#0F172A',
+              border: '1px solid #E2E8F0', borderRadius: '7px', px: 1.25, py: 0.75,
+              bgcolor: '#fff', cursor: 'pointer', outline: 'none',
+              '&:focus': { borderColor: ACCENT },
+            }}
+          >
+            {ROL_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
+          </Box>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 0.75, alignSelf: 'flex-end' }}>
+          <Button
+            size="small" variant="outlined" color="error"
+            disabled={actioning}
+            onClick={() => onRechazar(s.id)}
+            sx={{ fontSize: 12, fontWeight: 600, borderRadius: '8px', py: 0.7 }}
+          >
+            Rechazar
+          </Button>
+          <Button
+            size="small" variant="contained"
+            disabled={actioning}
+            onClick={() => onAprobar(s.id, rolSeleccionado)}
+            sx={{ fontSize: 12, fontWeight: 700, borderRadius: '8px', py: 0.7, bgcolor: '#16A34A', '&:hover': { bgcolor: '#15803D' } }}
+          >
+            Aprobar
+          </Button>
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
 function DashboardAdmin() {
   const navigate = useNavigate();
-  const [stats, setStats]     = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [stats,      setStats]      = useState(null);
+  const [solicitudes, setSolicitudes] = useState([]);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingSol,   setLoadingSol]   = useState(true);
+  const [actioning, setActioning] = useState(false);
 
-  useEffect(() => {
+  const fetchData = () => {
     adminApi.getStats()
       .then(r => setStats(r.data))
       .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => setLoadingStats(false));
 
-  if (loading) return <LinearProgress sx={{ borderRadius: 4 }} />;
+    adminApi.getSolicitudes()
+      .then(r => setSolicitudes(r.data ?? []))
+      .catch(() => setSolicitudes([]))
+      .finally(() => setLoadingSol(false));
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const handleAprobar = async (id, rol) => {
+    setActioning(true);
+    try {
+      await adminApi.aprobarSolicitud(id, rol);
+      setSolicitudes(prev => prev.filter(s => s.id !== id));
+      setStats(prev => prev ? {
+        ...prev,
+        usuarios: {
+          ...prev.usuarios,
+          pendientes: (prev.usuarios.pendientes ?? 1) - 1,
+          activos:    (prev.usuarios.activos    ?? 0) + 1,
+        }
+      } : prev);
+    } catch {
+      // silencioso
+    } finally {
+      setActioning(false);
+    }
+  };
+
+  const handleRechazar = async (id) => {
+    setActioning(true);
+    try {
+      await adminApi.rechazarSolicitud(id, 'Rechazado por administrador');
+      setSolicitudes(prev => prev.filter(s => s.id !== id));
+      setStats(prev => prev ? {
+        ...prev,
+        usuarios: { ...prev.usuarios, pendientes: (prev.usuarios.pendientes ?? 1) - 1 }
+      } : prev);
+    } catch {
+      // silencioso
+    } finally {
+      setActioning(false);
+    }
+  };
 
   const u = stats?.usuarios ?? {};
+  const loading = loadingStats;
+
   const chartData = [
     { name: 'Activos',    count: u.activos       ?? 0, fill: '#10B981' },
     { name: 'Bloqueados', count: u.bloqueados    ?? 0, fill: '#EF4444' },
     { name: 'Nuevos 30d', count: u.nuevosEste30d ?? 0, fill: '#F59E0B' },
+    { name: 'Pendientes', count: u.pendientes    ?? 0, fill: '#F59E0B' },
   ];
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 3 }}>
+      {/* Header */}
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 1 }}>
         <Box>
           <Typography variant="h5" sx={{ mb: 0.3, fontWeight: 800 }}>Panel de Administración</Typography>
           <Typography variant="body2" color="text.secondary">
@@ -1096,54 +1234,126 @@ function DashboardAdmin() {
             {new Date().toLocaleDateString('es-CR', { day: 'numeric', month: 'long', year: 'numeric' })}
           </Typography>
         </Box>
-        <Button variant="contained" startIcon={<AdminPanelSettingsIcon />} onClick={() => navigate('/admin')}>
-          Panel completo
+        <Button variant="contained" startIcon={<AdminPanelSettingsIcon />} onClick={() => navigate('/admin')}
+          sx={{ bgcolor: '#0F172A', '&:hover': { bgcolor: '#1E293B' } }}>
+          Gestionar usuarios
         </Button>
       </Box>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 1.5, mb: 3 }}>
-        <StatCard label="Usuarios totales"  value={u.total}          icon={PeopleAltIcon}  iconBg="#EFF6FF"  iconColor={ACCENT}    />
-        <StatCard label="Activos"           value={u.activos}        icon={CheckCircleIcon} iconBg="#ECFDF5"  iconColor="#16A34A"   />
-        <StatCard label="Bloqueados"        value={u.bloqueados}     icon={GppMaybeIcon}    iconBg="#FEF2F2"  iconColor="#DC2626"   sub={u.bloqueados > 0 ? 'Requieren atención' : undefined} />
-        <StatCard label="Nuevos (30d)"      value={u.nuevosEste30d}  icon={TrendingUpIcon}  iconBg="#FFFBEB"  iconColor="#D97706"   />
-      </Box>
+      {/* Alert solicitudes */}
+      {!loadingSol && solicitudes.length > 0 && (
+        <AlertBand type="warning"
+          message={`${solicitudes.length} solicitud${solicitudes.length > 1 ? 'es' : ''} pendiente${solicitudes.length > 1 ? 's' : ''} de aprobación.`} />
+      )}
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, gap: 2 }}>
+      {/* Stats */}
+      {loading ? (
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 1.5, mb: 3 }}>
+          {[1,2,3,4].map(i => <Skeleton key={i} height={110} variant="rounded" sx={{ borderRadius: '12px' }} />)}
+        </Box>
+      ) : (
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2,1fr)', sm: 'repeat(4,1fr)' }, gap: 1.5, mb: 3 }}>
+          <StatCard label="Usuarios totales" value={u.total}          icon={PeopleAltIcon}   iconBg="#EFF6FF" iconColor={ACCENT}   />
+          <StatCard label="Activos"          value={u.activos}        icon={CheckCircleIcon}  iconBg="#ECFDF5" iconColor="#16A34A" />
+          <StatCard label="Pendientes"       value={u.pendientes}     icon={GppMaybeIcon}     iconBg="#FFFBEB" iconColor="#D97706"
+            sub={u.pendientes > 0 ? 'Esperan aprobación' : undefined} />
+          <StatCard label="Nuevos (30d)"     value={u.nuevosEste30d}  icon={TrendingUpIcon}   iconBg="#EFF6FF" iconColor={ACCENT}  />
+        </Box>
+      )}
+
+      {/* Main grid */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 340px' }, gap: 2 }}>
+
+        {/* LEFT — Solicitudes pendientes */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <StatusBarChart data={chartData} title="Estado de usuarios" />
+
+          <Panel
+            title={`Solicitudes de acceso${solicitudes.length > 0 ? ` (${solicitudes.length})` : ''}`}
+            action={
+              <Button size="small" endIcon={<ArrowForwardIcon sx={{ fontSize: 11 }} />}
+                onClick={() => navigate('/admin')}
+                sx={{ fontSize: 11, textTransform: 'none', color: ACCENT, py: 0 }}>
+                Ver todas
+              </Button>
+            }
+          >
+            {loadingSol ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {[1,2].map(i => <Skeleton key={i} height={140} variant="rounded" sx={{ borderRadius: '10px' }} />)}
+              </Box>
+            ) : solicitudes.length === 0 ? (
+              <Box sx={{ py: 5, textAlign: 'center' }}>
+                <CheckCircleOutlineIcon sx={{ fontSize: 36, color: '#10B981', mb: 1 }} />
+                <Typography fontSize={14} fontWeight={600} color="text.primary">Sin solicitudes pendientes</Typography>
+                <Typography fontSize={13} color="text.secondary" sx={{ mt: 0.5 }}>
+                  Todas las solicitudes de acceso han sido procesadas.
+                </Typography>
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {solicitudes.map(s => (
+                  <SolicitudCard
+                    key={s.id}
+                    s={s}
+                    onAprobar={handleAprobar}
+                    onRechazar={handleRechazar}
+                    actioning={actioning}
+                  />
+                ))}
+              </Box>
+            )}
+          </Panel>
+
+          {/* Chart */}
+          {!loading && <StatusBarChart data={chartData} title="Distribución de usuarios" />}
+        </Box>
+
+        {/* RIGHT */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+
+          {/* Desglose */}
           <Panel title="Desglose de usuarios" noPad>
             {[
-              { label: 'Activos',      value: u.activos,       color: '#10B981' },
-              { label: 'Bloqueados',   value: u.bloqueados,    color: '#EF4444' },
-              { label: 'Nuevos (30d)', value: u.nuevosEste30d, color: '#F59E0B' },
+              { label: 'Activos',      value: u.activos,       color: '#10B981', pct: u.total },
+              { label: 'Pendientes',   value: u.pendientes,    color: '#F59E0B', pct: u.total },
+              { label: 'Bloqueados',   value: u.bloqueados,    color: '#EF4444', pct: u.total },
+              { label: 'Nuevos (30d)', value: u.nuevosEste30d, color: ACCENT,    pct: u.total },
             ].map((item, i) => (
               <Box key={item.label}>
                 {i > 0 && <Divider sx={{ mx: 2.5 }} />}
-                <Box sx={{ px: 2.5, py: 1.5, display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: item.color }} />
+                <Box sx={{ px: 2.5, py: 1.4, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: item.color, flexShrink: 0 }} />
                   <Typography fontSize={13} color="text.secondary" sx={{ flex: 1 }}>{item.label}</Typography>
-                  <Typography fontSize={16} fontWeight={700} color="text.primary">{item.value ?? '—'}</Typography>
-                  <Typography fontSize={11.5} color="text.secondary" sx={{ minWidth: 36, textAlign: 'right' }}>
-                    {u.total ? `${Math.round(((item.value ?? 0) / u.total) * 100)}%` : ''}
+                  <Typography fontSize={15} fontWeight={700} color="text.primary">
+                    {loading ? '—' : (item.value ?? 0)}
+                  </Typography>
+                  <Typography fontSize={11.5} color="text.secondary" sx={{ minWidth: 32, textAlign: 'right' }}>
+                    {!loading && item.pct ? `${Math.round(((item.value ?? 0) / item.pct) * 100)}%` : ''}
                   </Typography>
                 </Box>
               </Box>
             ))}
           </Panel>
-        </Box>
 
-        <Panel title="Acciones rápidas">
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Button fullWidth variant="outlined" startIcon={<PeopleIcon />} onClick={() => navigate('/admin')}
-              sx={{ justifyContent: 'flex-start', fontSize: 13 }}>
-              Gestionar usuarios
-            </Button>
-            <Button fullWidth variant="outlined" startIcon={<FolderOpenIcon />} onClick={() => navigate('/marketplace')}
-              sx={{ justifyContent: 'flex-start', fontSize: 13 }}>
-              Ver marketplace
-            </Button>
-          </Box>
-        </Panel>
+          {/* Acciones rápidas */}
+          <Panel title="Acciones rápidas">
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {[
+                { label: 'Gestionar usuarios',    Icon: PeopleIcon,    path: '/admin',       color: ACCENT },
+                { label: 'Ver marketplace',       Icon: FolderOpenIcon, path: '/marketplace', color: '#64748B' },
+              ].map(({ label, Icon, path, color }) => (
+                <Button key={path} fullWidth variant="outlined" startIcon={<Icon />}
+                  onClick={() => navigate(path)}
+                  sx={{ justifyContent: 'flex-start', fontSize: 13, color, borderColor: '#E2E8F0',
+                    '&:hover': { borderColor: color, bgcolor: `${color}10` } }}>
+                  {label}
+                </Button>
+              ))}
+            </Box>
+          </Panel>
+
+          <ActividadRecienteWidget />
+        </Box>
       </Box>
     </Box>
   );
