@@ -15,55 +15,53 @@ public static class EmailTemplates
   <meta charset=""UTF-8"">
   <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
   <title>{titulo}</title>
+  <link href=""https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap"" rel=""stylesheet"">
   <style>
     * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F1F5F9; color: #0F172A; }}
-    .wrapper {{ max-width: 600px; margin: 32px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }}
-    .header {{ background: linear-gradient(135deg, #0F1629 0%, #1E3A5F 100%); padding: 28px 32px; }}
-    .logo {{ display: flex; align-items: center; gap: 10px; }}
-    .logo-icon {{ background: #2563EB; border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 18px; }}
-    .logo-text {{ color: #fff; font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }}
-    .body {{ padding: 32px; }}
-    .title {{ font-size: 22px; font-weight: 700; color: #0F172A; margin-bottom: 8px; }}
-    .subtitle {{ font-size: 15px; color: #64748B; margin-bottom: 24px; line-height: 1.6; }}
-    .card {{ background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 20px 24px; margin-bottom: 20px; }}
-    .card-row {{ display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #F1F5F9; }}
-    .card-row:last-child {{ border-bottom: none; }}
-    .card-label {{ font-size: 13px; color: #64748B; }}
-    .card-value {{ font-size: 13px; font-weight: 600; color: #0F172A; }}
-    .badge {{ display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }}
-    .badge-green  {{ background: #DCFCE7; color: #166534; }}
-    .badge-blue   {{ background: #DBEAFE; color: #1D4ED8; }}
-    .badge-yellow {{ background: #FEF9C3; color: #854D0E; }}
-    .badge-red    {{ background: #FEE2E2; color: #991B1B; }}
-    .btn {{ display: inline-block; background: #2563EB; color: #fff !important; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 700; margin: 16px 0; }}
+    body {{ font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif; background: #F4F1EC; color: #111827; }}
+    .wrapper {{ max-width: 540px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.10); }}
+    .stripe {{ height: 4px; background: #F59E0B; }}
+    .top {{ padding: 22px 36px 0; display: flex; align-items: center; gap: 8px; }}
+    .logo-mark {{ width: 28px; height: 28px; background: #111827; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1; }}
+    .logo-name {{ font-size: 15px; font-weight: 700; color: #111827; letter-spacing: -0.3px; }}
+    .body {{ padding: 32px 36px 36px; }}
+    .greeting {{ font-family: 'DM Serif Display', Georgia, serif; font-size: 28px; color: #111827; line-height: 1.25; margin-bottom: 14px; letter-spacing: -0.5px; }}
+    .text {{ font-size: 15px; color: #4B5563; line-height: 1.75; margin-bottom: 32px; }}
+    .cta {{ margin-bottom: 32px; }}
+    .btn {{ display: inline-block; text-decoration: none; padding: 15px 32px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700; color: #ffffff !important; letter-spacing: -0.1px; }}
+    .btn-amber {{ background: #D97706; }}
+    .btn-navy  {{ background: #1B3B7A; }}
     .btn-green {{ background: #16A34A; }}
-    .divider {{ border: none; border-top: 1px solid #F1F5F9; margin: 24px 0; }}
-    .footer {{ background: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 20px 32px; text-align: center; }}
-    .footer p {{ font-size: 12px; color: #94A3B8; line-height: 1.6; }}
-    .footer a {{ color: #2563EB; text-decoration: none; }}
+    .meta {{ display: flex; gap: 24px; background: #F9FAFB; border-radius: 8px; padding: 14px 20px; margin-bottom: 28px; }}
+    .meta-label {{ font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: #9CA3AF; margin-bottom: 3px; }}
+    .meta-value {{ font-size: 14px; font-weight: 600; color: #111827; }}
+    .divider {{ height: 1px; background: #F3F4F6; margin-bottom: 20px; }}
+    .small {{ font-size: 13px; color: #9CA3AF; line-height: 1.65; }}
+    .footer {{ border-top: 1px solid #F3F4F6; padding: 18px 36px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }}
+    .footer-copy {{ font-size: 12px; color: #D1D5DB; }}
+    .footer-link {{ font-size: 12px; color: #9CA3AF; text-decoration: none; }}
     @media (max-width: 600px) {{
       .wrapper {{ margin: 0; border-radius: 0; }}
-      .body {{ padding: 20px; }}
-      .header {{ padding: 20px; }}
+      .body {{ padding: 28px 20px 28px; }}
+      .top {{ padding: 20px 20px 0; }}
+      .footer {{ padding: 16px 20px; }}
+      .meta {{ flex-direction: column; gap: 12px; }}
     }}
   </style>
 </head>
 <body>
   <div class=""wrapper"">
-    <div class=""header"">
-      <div class=""logo"">
-        <div class=""logo-icon"">🏗️</div>
-        <span class=""logo-text"">ConstruApp</span>
-      </div>
+    <div class=""stripe""></div>
+    <div class=""top"">
+      <div class=""logo-mark"">🏗</div>
+      <span class=""logo-name"">ConstruApp</span>
     </div>
     <div class=""body"">
       {contenido}
     </div>
     <div class=""footer"">
-      <p>Este correo fue enviado automáticamente por <strong>ConstruApp</strong>.<br>
-      Si tenés preguntas, contactanos en <a href=""mailto:soporte@construapp.com"">soporte@construapp.com</a></p>
-      <p style=""margin-top:8px;"">© {DateTime.Now.Year} ConstruApp · Costa Rica</p>
+      <span class=""footer-copy"">© {DateTime.Now.Year} ConstruApp · Costa Rica</span>
+      <a href=""mailto:soporte@construapp.com"" class=""footer-link"">soporte@construapp.com</a>
     </div>
   </div>
 </body>
@@ -305,17 +303,16 @@ public static class EmailTemplates
 
     public static string RecuperacionContrasena(string nombre, string resetUrl) =>
         Base("Recuperá tu contraseña — ConstruApp", $@"
-        <p class=""title"">🔐 Recuperá tu contraseña</p>
-        <p class=""subtitle"">Hola <strong>{nombre}</strong>, recibimos una solicitud para restablecer la contraseña de tu cuenta en ConstruApp.</p>
-        <div style=""text-align:center; margin:28px 0;"">
-          <a href=""{resetUrl}"" class=""btn"">Restablecer contraseña</a>
+        <p class=""greeting"">Recuperá tu<br>contraseña</p>
+        <p class=""text"">Hola <strong>{nombre}</strong>, recibimos una solicitud para cambiar la contraseña de tu cuenta. Si fuiste vos, usá el botón de abajo para crear una nueva.</p>
+        <div class=""cta"">
+          <a href=""{resetUrl}"" class=""btn btn-amber"">Restablecer contraseña</a>
         </div>
-        <div class=""card"">
-          <div class=""card-row""><span class=""card-label"">Válido por</span><span class=""badge badge-yellow"">24 horas</span></div>
-          <div class=""card-row""><span class=""card-label"">Solicitado</span><span class=""card-value"">{DateTime.Now:dd/MM/yyyy HH:mm}</span></div>
+        <div class=""meta"">
+          <div><div class=""meta-label"">Válido por</div><div class=""meta-value"">1 hora</div></div>
         </div>
-        <p style=""font-size:13px; color:#94A3B8;"">Si no solicitaste este cambio, podés ignorar este correo. Tu contraseña no será modificada.</p>
-        <p style=""font-size:12px; color:#CBD5E1; margin-top:8px;"">Si el botón no funciona, copiá este enlace: <a href=""{resetUrl}"" style=""color:#2563EB;"">{resetUrl}</a></p>");
+        <div class=""divider""></div>
+        <p class=""small"">Si no pediste este cambio, podés ignorar este correo. Tu contraseña no se va a modificar.</p>");
 
     // ── Test ─────────────────────────────────────────────────────────────────────
 
@@ -332,18 +329,15 @@ public static class EmailTemplates
 
     public static string VerificacionEmail(string nombre, string verifyUrl) =>
         Base("Verificá tu correo — ConstruApp", $@"
-        <p class=""title"">Verificá tu correo electrónico</p>
-        <p class=""subtitle"">Hola {nombre}, gracias por registrarte en ConstruApp. Hacé clic en el botón para confirmar tu dirección de correo.</p>
-        <div style=""text-align:center; margin: 28px 0;"">
-          <a href=""{verifyUrl}"" style=""background:#1B3B7A; color:#fff; text-decoration:none; padding:14px 32px; border-radius:10px; font-weight:700; font-size:15px; display:inline-block;"">
-            Verificar correo electrónico
-          </a>
+        <p class=""greeting"">Confirmá tu<br>correo electrónico</p>
+        <p class=""text"">Hola <strong>{nombre}</strong>, gracias por registrarte. Para activar tu cuenta verificá tu dirección de correo. Luego un administrador aprobará tu acceso.</p>
+        <div class=""cta"">
+          <a href=""{verifyUrl}"" class=""btn btn-navy"">Verificar correo electrónico</a>
         </div>
-        <p style=""font-size:13px; color:#64748B; text-align:center;"">
-          O copiá este enlace en tu navegador:<br/>
-          <a href=""{verifyUrl}"" style=""color:#2563EB; word-break:break-all;"">{verifyUrl}</a>
-        </p>
-        <p style=""font-size:12px; color:#94A3B8; margin-top:20px; text-align:center;"">
-          Este enlace expira en 24 horas. Si no creaste una cuenta, ignorá este mensaje.
-        </p>");
+        <div class=""meta"">
+          <div><div class=""meta-label"">Enlace válido</div><div class=""meta-value"">24 horas</div></div>
+          <div><div class=""meta-label"">Siguiente paso</div><div class=""meta-value"">Aprobación admin</div></div>
+        </div>
+        <div class=""divider""></div>
+        <p class=""small"">Si no creaste esta cuenta, ignorá este correo.</p>");
 }
