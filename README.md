@@ -117,3 +117,8 @@ Abre `http://localhost:5173`.
 Los scripts idempotentes de despliegue, validación, prueba de lectura y
 escritura y configuración de acceso están documentados en
 [`database/azure/README.md`](database/azure/README.md).
+
+## Flujo de trabajo del equipo
+
+La convención de ramas, revisiones y pull requests se encuentra en
+[`docs/ESTRATEGIA_GITFLOW.md`](docs/ESTRATEGIA_GITFLOW.md).
