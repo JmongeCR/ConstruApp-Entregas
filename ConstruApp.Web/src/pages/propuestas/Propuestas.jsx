@@ -24,7 +24,8 @@ import EmojiEventsIcon        from '@mui/icons-material/EmojiEvents';
 import { propuestasApi, proyectosApi, calificacionesApi } from '../../api/endpoints';
 import { useAuth } from '../../context/AuthContext';
 
-const ACCENT = '#2563EB';
+const ACCENT    = '#2563EB';
+const API_BASE  = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:5115';
 
 const ESTADO_STYLE = {
   Enviada:    { bg: '#EFF6FF', color: '#1D4ED8', label: 'Enviada'    },
@@ -86,8 +87,8 @@ function FotoUploader({ proyectoId, onUploaded }) {
         <ImageList cols={3} gap={4} sx={{ borderRadius: 1, overflow: 'hidden', mb: 0 }}>
           {fotos.map(f => (
             <ImageListItem key={f.id} sx={{ cursor: 'pointer' }}
-              onClick={() => window.open(`http://localhost:5115${f.url}`, '_blank')}>
-              <img src={`http://localhost:5115${f.url}`} alt={f.nombreArchivo}
+              onClick={() => window.open(`${API_BASE}${f.url}`, '_blank')}>
+              <img src={`${API_BASE}${f.url}`} alt={f.nombreArchivo}
                 style={{ width: '100%', height: 70, objectFit: 'cover' }}
                 onError={e => { e.target.style.display = 'none'; }} />
             </ImageListItem>

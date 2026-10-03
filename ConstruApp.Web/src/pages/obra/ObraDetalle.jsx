@@ -41,7 +41,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 
 const ACCENT   = '#2563EB';
-const API_BASE = 'http://localhost:5115';
+const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:5115';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const fmtDate  = d => d ? new Date(d).toLocaleDateString('es-CR',

@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import VisibilityIcon    from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import ConstructionIcon  from '@mui/icons-material/Construction';
+import HandymanOutlinedIcon from '@mui/icons-material/HandymanOutlined';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Login() {
@@ -25,7 +25,9 @@ export default function Login() {
     const result = await login(form.email, form.password);
     if (result.ok) navigate(redirectTo);
     else setError({
-      msg:      result.message,
+      msg: result.status === 429
+        ? 'Demasiados intentos. Esperá 1 minuto e intentá de nuevo.'
+        : result.message,
       severity: result.status === 403 ? 'info' : 'error',
     });
   };
@@ -116,12 +118,12 @@ export default function Login() {
           display: 'flex', alignItems: 'center', gap: 1.5, zIndex: 1,
         }}>
           <Box sx={{
-            bgcolor: '#F59E0B', borderRadius: '10px',
+            bgcolor: '#2563EB', borderRadius: '10px',
             width: 36, height: 36,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 16px rgba(245,158,11,0.4)',
+            boxShadow: '0 4px 16px rgba(37,99,235,0.35)',
           }}>
-            <ConstructionIcon sx={{ color: '#fff', fontSize: 20 }} />
+            <HandymanOutlinedIcon sx={{ color: '#fff', fontSize: 20 }} />
           </Box>
           <Typography sx={{
             fontWeight: 800, fontSize: 18, color: '#fff',
@@ -196,8 +198,8 @@ export default function Login() {
             display: { xs: 'flex', md: 'none' },
             alignItems: 'center', gap: 1.5, mb: 4,
           }}>
-            <Box sx={{ bgcolor: '#F59E0B', borderRadius: '8px', p: '5px', display: 'flex' }}>
-              <ConstructionIcon sx={{ color: 'white', fontSize: 17 }} />
+            <Box sx={{ bgcolor: '#2563EB', borderRadius: '8px', p: '5px', display: 'flex' }}>
+              <HandymanOutlinedIcon sx={{ color: 'white', fontSize: 17 }} />
             </Box>
             <Typography sx={{ fontWeight: 800, fontSize: 15, color: '#0F172A' }}>ConstruApp</Typography>
           </Box>

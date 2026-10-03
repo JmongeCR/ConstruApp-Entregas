@@ -449,12 +449,12 @@ export default function Cronograma() {
                   '& .MuiLinearProgress-bar': { bgcolor: ACCENT, borderRadius: 3 } }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1.5, flexWrap: 'wrap', gap: 1 }}>
                 {[
-                  { label: 'Completadas', val: fasesCompletadas, color: '#10B981' },
-                  { label: 'En progreso', val: fasesEnProgreso,  color: ACCENT },
-                  { label: 'Pendientes',  val: fasesPendientes,  color: '#9CA3AF' },
+                  { label: 'Completadas', val: fasesCompletadas },
+                  { label: 'En progreso', val: fasesEnProgreso  },
+                  { label: 'Pendientes',  val: fasesPendientes  },
                 ].map(s => (
                   <Box key={s.label} sx={{ textAlign: 'center' }}>
-                    <Typography fontSize={18} fontWeight={700} sx={{ color: s.color, lineHeight: 1.1 }}>{s.val}</Typography>
+                    <Typography fontSize={18} fontWeight={700} sx={{ color: '#0F172A', lineHeight: 1.1 }}>{s.val}</Typography>
                     <Typography fontSize={11} color="text.secondary">{s.label}</Typography>
                   </Box>
                 ))}
@@ -466,16 +466,18 @@ export default function Cronograma() {
         {/* Quick stats */}
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.5 }}>
           {[
-            { label: 'Total de fases',   value: totalFases,      accent: ACCENT },
-            { label: 'Completadas',      value: fasesCompletadas, accent: '#10B981' },
-            { label: 'Atrasadas',        value: fases.filter(f => estadoVis(f) === 'Atrasada').length, accent: '#EF4444' },
+            { label: 'Total de fases',   value: totalFases },
+            { label: 'Completadas',      value: fasesCompletadas },
+            { label: 'Atrasadas',        value: fases.filter(f => estadoVis(f) === 'Atrasada').length },
           ].map(s => (
             <Box key={s.label} sx={{
-              bgcolor: '#fff', border: '1px solid #E8EDF3', borderRadius: '12px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-              px: 2.5, pt: 2, pb: 1.75,
+              bgcolor: '#fff',
+              border: '1px solid #E2E8F0',
+              borderLeft: '3px solid #E2E8F0',
+              borderRadius: '8px',
+              px: 2, pt: 1.5, pb: 1.5,
             }}>
-              <Typography fontSize={26} fontWeight={800} lineHeight={1.1} sx={{ color: s.accent }}>
+              <Typography fontSize={26} fontWeight={800} lineHeight={1.1} sx={{ color: '#0F172A', letterSpacing: '-0.5px' }}>
                 {loadingFases ? <Skeleton width={40} /> : (s.value ?? '—')}
               </Typography>
               <Typography fontSize={12} color="text.secondary" sx={{ mt: 0.5, fontWeight: 500 }}>{s.label}</Typography>
