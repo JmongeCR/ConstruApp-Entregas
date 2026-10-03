@@ -119,7 +119,7 @@ function FilterPanel({ filtros, onChange, onReset, extraEspecialidades }) {
 
       <TextField size="small" fullWidth label="Buscar empresa o especialidad"
         value={filtros.busqueda} onChange={set('busqueda')}
-        InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 16, color: 'text.disabled' }} /></InputAdornment> }}
+        slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 16, color: 'text.disabled' }} /></InputAdornment> } }}
       />
 
       <FormControl size="small" fullWidth>
@@ -722,7 +722,7 @@ export default function Marketplace() {
           <FilterListIcon sx={{ fontSize:17, color:'text.disabled', flexShrink:0 }} />
           <TextField size="small" placeholder="Buscar..." value={buscarConst}
             onChange={e=>setBuscarConst(e.target.value)}
-            InputProps={{ startAdornment:<InputAdornment position="start"><SearchIcon sx={{ fontSize:16, color:'text.disabled' }} /></InputAdornment> }}
+            slotProps={{ input: { startAdornment:<InputAdornment position="start"><SearchIcon sx={{ fontSize:16, color:'text.disabled' }} /></InputAdornment> } }}
             sx={{ width:220 }} />
           <FormControl size="small" sx={{ minWidth:140 }}>
             <Select value={provinciaConst} displayEmpty onChange={e=>setProvConst(e.target.value)}>
@@ -818,10 +818,10 @@ export default function Marketplace() {
           placeholder="Buscar por empresa, especialidad o ubicación..."
           value={filtros.busqueda}
           onChange={e => setFiltros(f=>({...f, busqueda:e.target.value}))}
-          InputProps={{
+          slotProps={{ input: {
             startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize:20, color:'text.disabled' }} /></InputAdornment>,
             sx: { bgcolor:'white', borderRadius:2 },
-          }}
+          } }}
           sx={{ '& .MuiOutlinedInput-root': { borderRadius:2 } }}
         />
       </Box>
