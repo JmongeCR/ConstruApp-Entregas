@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Box, TextField, Button, Typography, Alert, Grid,
 } from '@mui/material';
-import ConstructionIcon  from '@mui/icons-material/Construction';
+import HandymanOutlinedIcon from '@mui/icons-material/HandymanOutlined';
 import PersonAddIcon     from '@mui/icons-material/PersonAdd';
 import CheckCircleIcon   from '@mui/icons-material/CheckCircle';
 import { useAuth } from '../../context/AuthContext';
@@ -84,12 +84,12 @@ export default function Register() {
           display: 'flex', alignItems: 'center', gap: 1.5, zIndex: 1,
         }}>
           <Box sx={{
-            bgcolor: '#F59E0B', borderRadius: '10px',
+            bgcolor: '#2563EB', borderRadius: '10px',
             width: 36, height: 36,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 16px rgba(245,158,11,0.4)',
+            boxShadow: '0 4px 16px rgba(37,99,235,0.35)',
           }}>
-            <ConstructionIcon sx={{ color: '#fff', fontSize: 20 }} />
+            <HandymanOutlinedIcon sx={{ color: '#fff', fontSize: 20 }} />
           </Box>
           <Typography sx={{ fontWeight: 800, fontSize: 18, color: '#fff', letterSpacing: '-0.4px' }}>
             ConstruApp
@@ -151,7 +151,7 @@ export default function Register() {
 
           <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1.5, mb: 5 }}>
             <Box sx={{ bgcolor: ACCENT, borderRadius: 1.5, p: 0.7, display: 'flex' }}>
-              <ConstructionIcon sx={{ color: 'white', fontSize: 22 }} />
+              <HandymanOutlinedIcon sx={{ color: 'white', fontSize: 22 }} />
             </Box>
             <Typography fontWeight={800} fontSize={18}>ConstruApp</Typography>
           </Box>
