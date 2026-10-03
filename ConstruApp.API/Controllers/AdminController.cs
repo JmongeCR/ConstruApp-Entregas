@@ -27,24 +27,23 @@ public class AdminController : ControllerBase
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats()
     {
-        var users     = await _userManager.Users.ToListAsync();
-        var ahora     = DateTime.UtcNow;
-        var hace30    = ahora.AddDays(-30);
+        var ahora  = DateTime.UtcNow;
+        var hace30 = ahora.AddDays(-30);
+        var users  = _userManager.Users;
+
+        var total         = await users.CountAsync();
+        var activos       = await users.CountAsync(u => u.Activo && u.EstadoCuenta != "Pendiente" && u.EstadoCuenta != "Rechazado");
+        var bloqueados    = await users.CountAsync(u => !u.Activo && u.EstadoCuenta != "Pendiente");
+        var pendientes    = await users.CountAsync(u => u.EstadoCuenta == "Pendiente");
+        var nuevosEste30d = await users.CountAsync(u => u.CreatedAt >= hace30);
 
         return Ok(new
         {
-            usuarios = new
-            {
-                total          = users.Count,
-                activos        = users.Count(u => u.Activo && u.EstadoCuenta != "Pendiente" && u.EstadoCuenta != "Rechazado"),
-                bloqueados     = users.Count(u => !u.Activo && u.EstadoCuenta != "Pendiente"),
-                pendientes     = users.Count(u => u.EstadoCuenta == "Pendiente"),
-                nuevosEste30d  = users.Count(u => u.CreatedAt >= hace30),
-            }
+            usuarios = new { total, activos, bloqueados, pendientes, nuevosEste30d }
         });
     }
 
-    // GET api/admin/solicitudes  — usuarios con EstadoCuenta = "Pendiente"
+    // GET api/admin/solicitudes
     [HttpGet("solicitudes")]
     public async Task<IActionResult> GetSolicitudes()
     {
@@ -79,8 +78,8 @@ public class AdminController : ControllerBase
         if (Enum.TryParse<Rol>(req.Rol, true, out var rol))
             user.Rol = rol;
 
-        user.Activo        = true;
-        user.EstadoCuenta  = "Activo";
+        user.Activo       = true;
+        user.EstadoCuenta = "Activo";
         await _userManager.UpdateAsync(user);
 
         var adminId   = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -114,10 +113,17 @@ public class AdminController : ControllerBase
         return Ok(new { message = "Solicitud rechazada." });
     }
 
-    // GET api/admin/usuarios
+    // GET api/admin/usuarios?estado=&q=&page=1&pageSize=20
     [HttpGet("usuarios")]
-    public async Task<IActionResult> GetUsuarios([FromQuery] string? estado, [FromQuery] string? q)
+    public async Task<IActionResult> GetUsuarios(
+        [FromQuery] string? estado,
+        [FromQuery] string? q,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
+        if (page < 1) page = 1;
+        if (pageSize < 1 || pageSize > 100) pageSize = 20;
+
         var query = _userManager.Users.AsQueryable();
 
         if (!string.IsNullOrEmpty(estado))
@@ -133,8 +139,13 @@ public class AdminController : ControllerBase
         if (!string.IsNullOrEmpty(q))
             query = query.Where(u => u.Nombre.Contains(q) || u.Email!.Contains(q));
 
-        var result = await query
+        var total      = await query.CountAsync();
+        var totalPages = (int)Math.Ceiling(total / (double)pageSize);
+
+        var items = await query
             .OrderByDescending(u => u.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(u => new
             {
                 u.Id,
@@ -151,7 +162,7 @@ public class AdminController : ControllerBase
             })
             .ToListAsync();
 
-        return Ok(result);
+        return Ok(new { items, total, page, pageSize, totalPages });
     }
 
     // PUT api/admin/usuarios/{id}/activar

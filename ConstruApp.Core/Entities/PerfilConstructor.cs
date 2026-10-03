@@ -10,6 +10,8 @@ public class PerfilConstructor
     public string? ZonasCobertura { get; set; }   // CSV provincias
     public int    AniosExperiencia { get; set; }
     public string? CedulaJuridica  { get; set; }
+    public string? Telefono        { get; set; }
+    public string? EmailContacto   { get; set; }
     public string? SitioWeb        { get; set; }
     public string? Instagram       { get; set; }
     public bool   Verificado       { get; set; } = false;

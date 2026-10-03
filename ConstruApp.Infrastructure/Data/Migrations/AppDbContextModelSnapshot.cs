@@ -469,13 +469,25 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.Property<bool>("Activo")
                         .HasColumnType("bit");
 
+                    b.Property<string>("Cedula")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<int>("ConstructorId")
                         .HasColumnType("int");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Puesto")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Rol")
                         .HasMaxLength(100)
@@ -487,7 +499,9 @@ namespace ConstruApp.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ConstructorId");
+                    b.HasIndex("ConstructorId", "Cedula")
+                        .IsUnique()
+                        .HasFilter("[Cedula] IS NOT NULL");
 
                     b.ToTable("Empleados");
                 });
@@ -628,6 +642,33 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.HasIndex("ResponsableId");
 
                     b.ToTable("FasesProyecto");
+                });
+
+            modelBuilder.Entity("ConstruApp.Core.Entities.FavoritoProveedor", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("FechaAgregado")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("PerfilProveedorId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PerfilProveedorId");
+
+                    b.HasIndex("UsuarioId", "PerfilProveedorId")
+                        .IsUnique();
+
+                    b.ToTable("FavoritosProveedor");
                 });
 
             modelBuilder.Entity("ConstruApp.Core.Entities.FotoAvance", b =>
@@ -1174,6 +1215,10 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.Property<string>("DireccionFiscal")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("EmailContacto")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("EmailFacturacion")
                         .HasColumnType("nvarchar(max)");
 
@@ -1203,6 +1248,10 @@ namespace ConstruApp.Infrastructure.Data.Migrations
 
                     b.Property<decimal>("TasaIVA")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Telefono")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("TelefonoFiscal")
                         .HasColumnType("nvarchar(max)");
@@ -1507,6 +1556,8 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ClienteId");
+
+                    b.HasIndex("Estado");
 
                     b.ToTable("Proyectos");
                 });
@@ -2079,6 +2130,25 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.Navigation("Proyecto");
 
                     b.Navigation("Responsable");
+                });
+
+            modelBuilder.Entity("ConstruApp.Core.Entities.FavoritoProveedor", b =>
+                {
+                    b.HasOne("ConstruApp.Core.Entities.PerfilProveedor", "PerfilProveedor")
+                        .WithMany()
+                        .HasForeignKey("PerfilProveedorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ConstruApp.Core.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PerfilProveedor");
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("ConstruApp.Core.Entities.FotoAvance", b =>

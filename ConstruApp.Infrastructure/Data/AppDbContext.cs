@@ -47,6 +47,8 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
     public DbSet<EmailLog>                 EmailLogs              => Set<EmailLog>();
     // ── Invitaciones workspace ────────────────────────────────────────────────
     public DbSet<Invitacion>              Invitaciones           => Set<Invitacion>();
+    // ── Favoritos ─────────────────────────────────────────────────────────────
+    public DbSet<FavoritoProveedor>       FavoritosProveedor     => Set<FavoritoProveedor>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -197,9 +199,12 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
             e.Property(p => p.Especialidades).HasMaxLength(500);
             e.Property(p => p.ZonasCobertura).HasMaxLength(500);
             e.Property(p => p.CedulaJuridica).HasMaxLength(50);
+            e.Property(p => p.Telefono).HasMaxLength(20);
+            e.Property(p => p.EmailContacto).HasMaxLength(200);
             e.Property(p => p.SitioWeb).HasMaxLength(300);
             e.Property(p => p.Instagram).HasMaxLength(150);
             e.Property(p => p.CalificacionPromedio).HasColumnType("decimal(3,2)");
+            e.Property(p => p.TasaIVA).HasColumnType("decimal(18,2)");
 
             e.HasOne(p => p.Usuario)
              .WithOne(u => u.PerfilConstructor)
@@ -527,7 +532,11 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
             e.HasKey(emp => emp.Id);
             e.Property(emp => emp.Nombre).HasMaxLength(150).IsRequired();
             e.Property(emp => emp.Rol).HasMaxLength(100);
+            e.Property(emp => emp.Puesto).HasMaxLength(100);
+            e.Property(emp => emp.Cedula).HasMaxLength(20);
+            e.Property(emp => emp.Email).HasMaxLength(200);
             e.Property(emp => emp.Telefono).HasMaxLength(20);
+            e.HasIndex(emp => new { emp.ConstructorId, emp.Cedula }).IsUnique().HasFilter("[Cedula] IS NOT NULL");
 
             e.HasOne(emp => emp.Constructor)
              .WithMany(c => c.Empleados)
@@ -580,6 +589,8 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
             e.Property(f => f.Notas).HasMaxLength(2000);
             e.Property(f => f.MontoTotal).HasColumnType("decimal(18,2)");
             e.Property(f => f.MontoPagado).HasColumnType("decimal(18,2)");
+            e.Property(f => f.MontoIVA).HasColumnType("decimal(18,2)");
+            e.Property(f => f.MontoDescuento).HasColumnType("decimal(18,2)");
             e.Property(f => f.Estado).HasConversion<string>().HasMaxLength(20);
             e.Ignore(f => f.Saldo);   // propiedad calculada
 
@@ -707,6 +718,32 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
 
             e.HasIndex(n => new { n.UsuarioId, n.Leida });
             e.HasIndex(n => n.FechaCreacion);
+        });
+
+        // ── FavoritoProveedor ─────────────────────────────────────────────────────
+        builder.Entity<FavoritoProveedor>(e =>
+        {
+            e.HasKey(f => f.Id);
+
+            e.HasOne(f => f.Usuario)
+             .WithMany()
+             .HasForeignKey(f => f.UsuarioId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(f => f.PerfilProveedor)
+             .WithMany()
+             .HasForeignKey(f => f.PerfilProveedorId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            // Un usuario no puede guardar el mismo proveedor dos veces
+            e.HasIndex(f => new { f.UsuarioId, f.PerfilProveedorId }).IsUnique();
+        });
+
+        // ── Proyecto — índice de rendimiento ─────────────────────────────────────
+        builder.Entity<Proyecto>(e =>
+        {
+            e.HasIndex(p => p.Estado);
+            e.HasIndex(p => p.ClienteId);
         });
 
         // ── Invitacion ────────────────────────────────────────────────────────────
