@@ -9,6 +9,7 @@ using ConstruApp.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 
 namespace ConstruApp.API.Controllers;
@@ -107,6 +108,7 @@ public class AuthController : ControllerBase
 
     // POST api/auth/login
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
@@ -193,6 +195,7 @@ public class AuthController : ControllerBase
 
     // POST api/auth/forgot-password
     [HttpPost("forgot-password")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
     {
         var user = await _userManager.FindByEmailAsync(request.Email);

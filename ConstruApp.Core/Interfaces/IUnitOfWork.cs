@@ -36,5 +36,6 @@ public interface IUnitOfWork : IDisposable
     IRepository<Notificacion>             Notificaciones        { get; }
     IRepository<EmailLog>                 EmailLogs             { get; }
 
+    IRepository<FavoritoProveedor>          FavoritosProveedor     { get; }
     Task<int> SaveChangesAsync();
 }

@@ -22,7 +22,7 @@ public static class EmailTemplates
     .wrapper {{ max-width: 540px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.10); }}
     .stripe {{ height: 4px; background: #F59E0B; }}
     .top {{ padding: 22px 36px 0; display: flex; align-items: center; gap: 8px; }}
-    .logo-mark {{ width: 28px; height: 28px; background: #111827; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 15px; line-height: 1; }}
+    .logo-mark {{ width: 28px; height: 28px; background: #2563EB; border-radius: 6px; display: flex; align-items: center; justify-content: center; line-height: 1; }}
     .logo-name {{ font-size: 15px; font-weight: 700; color: #111827; letter-spacing: -0.3px; }}
     .body {{ padding: 32px 36px 36px; }}
     .greeting {{ font-family: 'DM Serif Display', Georgia, serif; font-size: 28px; color: #111827; line-height: 1.25; margin-bottom: 14px; letter-spacing: -0.5px; }}
@@ -53,7 +53,7 @@ public static class EmailTemplates
   <div class=""wrapper"">
     <div class=""stripe""></div>
     <div class=""top"">
-      <div class=""logo-mark"">🏗</div>
+      <div class=""logo-mark""><svg width=""16"" height=""16"" viewBox=""0 0 24 24"" fill=""white""><path d=""M21.67 18.17l-5.3-5.3h-.99l-2.13 2.13v.99l5.3 5.3c.39.39 1.02.39 1.41 0l1.71-1.71c.39-.38.39-1.01 0-1.41zm-1.41 1.41l-4.24-4.24.71-.71 4.24 4.24-.71.71zM17 5.34l-1.41-1.41-1.42 1.41 1.42 1.42-1.07 1.07-1.41-1.41-1.41 1.41 2.83 2.83 1.06-1.06 1.41 1.41 1.42-1.41-1.42-1.42 1.07-1.07 1.41 1.42 1.41-1.41L17 5.34zm-6.43 5.27L4.04 5.08 2.63 6.49 8.16 12l2.41-1.39z""/></svg></div>
       <span class=""logo-name"">ConstruApp</span>
     </div>
     <div class=""body"">

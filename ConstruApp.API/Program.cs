@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using ConstruApp.API.Services;
 using ConstruApp.Core.Entities;
 using ConstruApp.Core.Interfaces;
@@ -6,6 +7,7 @@ using ConstruApp.Infrastructure.Data;
 using ConstruApp.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -67,6 +69,19 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+
+// ── Rate Limiting ──────────────────────────────────────────────────────────────
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("auth", cfg =>
+    {
+        cfg.Window            = TimeSpan.FromMinutes(1);
+        cfg.PermitLimit       = 5;
+        cfg.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        cfg.QueueLimit        = 0;
+    });
+});
 
 // ── Servicios ──────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IPermisosService,  PermisosService>();
@@ -170,6 +185,7 @@ app.MapGet("/api/health", async (AppDbContext db) =>
 });
 
 app.UseCors("AppPolicy");
+app.UseRateLimiter();
 app.UseStaticFiles();
 if (app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
