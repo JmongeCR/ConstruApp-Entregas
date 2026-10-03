@@ -319,7 +319,7 @@ function AppRoutes() {
         {/* Cliente */}
         <Route path="/mis-proyectos"           element={<RoleGuard roles={['Cliente','Admin']}><MisProyectos /></RoleGuard>} />
         <Route path="/publicar"                element={<RoleGuard roles={['Cliente','Admin']}><PublicarProyecto /></RoleGuard>} />
-        <Route path="/marketplace"             element={<RoleGuard roles={['Cliente','Admin']}><Marketplace /></RoleGuard>} />
+        <Route path="/marketplace"             element={<RoleGuard roles={['Cliente','Admin','Constructor']}><Marketplace /></RoleGuard>} />
         <Route path="/cotizaciones-ia"         element={<RoleGuard roles={['Cliente','Admin']}><CotizacionesIA /></RoleGuard>} />
         <Route path="/cronograma"              element={<RoleGuard roles={['Cliente','Admin']}><Cronograma /></RoleGuard>} />
         <Route path="/calendario"             element={<RoleGuard roles={['Cliente','Admin']}><Calendario /></RoleGuard>} />
