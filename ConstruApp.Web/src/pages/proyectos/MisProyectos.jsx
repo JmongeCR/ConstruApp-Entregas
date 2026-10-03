@@ -267,9 +267,13 @@ export default function MisProyectos() {
             {[1,2,3,4,5].map(i => <Skeleton key={i} height={44} sx={{ mb: 0.5 }} />)}
           </Box>
         ) : proyectos.length === 0 ? (
-          <Box sx={{ py: 8, textAlign: 'center' }}>
-            <Typography fontSize={13.5} color="text.secondary" sx={{ mb: 2 }}>
-              No tenés proyectos aún.
+          <Box sx={{ py: 10, textAlign: 'center' }}>
+            <ConstructionIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+            <Typography fontSize={15} fontWeight={600} color="text.secondary" mb={0.5}>
+              No tenés proyectos aún
+            </Typography>
+            <Typography fontSize={13} color="text.disabled" mb={3}>
+              Publicá tu primer proyecto y recibí cotizaciones de constructores verificados.
             </Typography>
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/publicar')}>
               Publicar primer proyecto

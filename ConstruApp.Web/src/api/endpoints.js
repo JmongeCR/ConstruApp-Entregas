@@ -320,6 +320,13 @@ export const invitacionesApi = {
   activar:        (token, data) => api.post(`/invitaciones/${token}/activar`, data),
 };
 
+// ── Favoritos ─────────────────────────────────────────────────────────────────
+export const favoritosApi = {
+  getProveedores:   ()   => api.get('/favoritos/proveedores'),
+  agregarProveedor: (id) => api.post(`/favoritos/proveedores/${id}`),
+  quitarProveedor:  (id) => api.delete(`/favoritos/proveedores/${id}`),
+};
+
 // ── Email ─────────────────────────────────────────────────────────────────────
 export const emailApi = {
   getConfig:  ()        => api.get('/email/config'),
@@ -330,11 +337,12 @@ export const emailApi = {
 
 // ── Trabajadores ──────────────────────────────────────────────────────────────
 export const trabajadoresApi = {
-  getAll:  ()           => api.get('/trabajadores'),
-  getById: (id)         => api.get(`/trabajadores/${id}`),
-  create:  (data)       => api.post('/trabajadores', data),
-  update:  (id, data)   => api.put(`/trabajadores/${id}`, data),
-  delete:  (id)         => api.delete(`/trabajadores/${id}`),
+  getAll:         ()           => api.get('/trabajadores'),
+  getById:        (id)         => api.get(`/trabajadores/${id}`),
+  create:         (data)       => api.post('/trabajadores', data),
+  update:         (id, data)   => api.put(`/trabajadores/${id}`, data),
+  delete:         (id)         => api.delete(`/trabajadores/${id}`),
+  toggleEstado:   (id, activo) => api.put(`/trabajadores/${id}`, { estado: activo ? 'Activo' : 'Inactivo' }),
 };
 
 // ── Cuadrillas ────────────────────────────────────────────────────────────────

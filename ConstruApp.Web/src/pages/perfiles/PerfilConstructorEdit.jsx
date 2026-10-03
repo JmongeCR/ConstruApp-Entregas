@@ -1,28 +1,31 @@
 import { useState, useEffect } from 'react';
 import {
   Box, Typography, Card, CardContent, TextField, Button,
-  Grid, Alert, Snackbar, LinearProgress, Divider, Chip,
+  Grid, Alert, Snackbar, Chip, Stack, Divider,
 } from '@mui/material';
-import SaveIcon        from '@mui/icons-material/Save';
-import VerifiedIcon    from '@mui/icons-material/Verified';
+import SaveIcon     from '@mui/icons-material/Save';
+import BusinessIcon from '@mui/icons-material/Business';
+import VerifiedIcon from '@mui/icons-material/Verified';
+import PendingIcon  from '@mui/icons-material/HourglassEmpty';
 import { perfilesConstructorApi } from '../../api/endpoints';
-import { useAuth } from '../../context/AuthContext';
+import LoadingScreen from '../../components/common/LoadingScreen';
 
 const EMPTY = {
   nombreEmpresa: '', bio: '', especialidades: '', zonasCobertura: '',
-  aniosExperiencia: '', cedulaJuridica: '', telefono: '', sitioWeb: '', instagram: '',
+  aniosExperiencia: '', cedulaJuridica: '', telefono: '', emailContacto: '',
+  sitioWeb: '', instagram: '',
 };
 
 export default function PerfilConstructorEdit() {
-  const { usuario } = useAuth();
-  const [perfil, setPerfil]   = useState(null);
-  const [form, setForm]       = useState(EMPTY);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving]   = useState(false);
-  const [toast, setToast]     = useState({ open: false, msg: '', severity: 'success' });
+  const [perfil, setPerfil]     = useState(null);
+  const [form, setForm]         = useState(EMPTY);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [errors, setErrors]     = useState({});
+  const [toast, setToast]       = useState({ open: false, msg: '', severity: 'success' });
 
   const notify = (msg, severity = 'success') => setToast({ open: true, msg, severity });
-  const set = f => e => setForm(p => ({ ...p, [f]: e.target.value }));
+  const set = f => e => { setForm(p => ({ ...p, [f]: e.target.value })); setErrors(p => ({ ...p, [f]: '' })); };
 
   useEffect(() => {
     perfilesConstructorApi.getMio()
@@ -36,6 +39,7 @@ export default function PerfilConstructorEdit() {
           aniosExperiencia: r.data.aniosExperiencia ?? '',
           cedulaJuridica:   r.data.cedulaJuridica   || '',
           telefono:         r.data.telefono         || '',
+          emailContacto:    r.data.emailContacto    || '',
           sitioWeb:         r.data.sitioWeb         || '',
           instagram:        r.data.instagram        || '',
         });
@@ -44,7 +48,19 @@ export default function PerfilConstructorEdit() {
       .finally(() => setLoading(false));
   }, []);
 
+  const validate = () => {
+    const errs = {};
+    if (!form.nombreEmpresa.trim()) errs.nombreEmpresa = 'El nombre de la empresa es requerido.';
+    if (form.emailContacto && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.emailContacto))
+      errs.emailContacto = 'Correo electrónico inválido.';
+    if (form.aniosExperiencia !== '' && (isNaN(Number(form.aniosExperiencia)) || Number(form.aniosExperiencia) < 0))
+      errs.aniosExperiencia = 'Debe ser un número positivo.';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const handleSave = async () => {
+    if (!validate()) return;
     setSaving(true);
     try {
       const payload = { ...form, aniosExperiencia: parseInt(form.aniosExperiencia) || 0 };
@@ -52,64 +68,93 @@ export default function PerfilConstructorEdit() {
         ? await perfilesConstructorApi.update(perfil.id, payload)
         : await perfilesConstructorApi.create(payload);
       setPerfil(data);
-      notify('Perfil guardado correctamente.');
-    } catch {
-      notify('Error al guardar el perfil.', 'error');
+      notify(perfil?.id ? 'Perfil actualizado correctamente.' : 'Empresa registrada correctamente.');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Error al guardar el perfil.';
+      notify(msg, 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <LinearProgress />;
+  if (loading) return <LoadingScreen />;
 
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      {/* Header */}
+      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={1}>
         <Box>
-          <Typography variant="h5" fontWeight={800}>Mi perfil Constructor</Typography>
-          <Typography color="text.secondary">
+          <Stack direction="row" alignItems="center" gap={1} mb={0.5}>
+            <BusinessIcon color="primary" />
+            <Typography variant="h5" fontWeight={800}>
+              {perfil?.id ? 'Mi empresa' : 'Registrar empresa'}
+            </Typography>
+          </Stack>
+          <Typography color="text.secondary" fontSize={14}>
             Esta información es visible para los clientes en el marketplace.
           </Typography>
         </Box>
-        {perfil?.verificado && (
-          <Chip icon={<VerifiedIcon />} label="Verificado" color="success" />
+        {perfil?.id && (
+          perfil.verificado
+            ? <Chip icon={<VerifiedIcon />} label="Empresa verificada" color="success" size="small"
+                sx={{ fontWeight: 600 }} />
+            : <Chip icon={<PendingIcon />} label="Pendiente de verificación" color="warning" size="small"
+                sx={{ fontWeight: 600 }} />
         )}
-      </Box>
+      </Stack>
 
-      <Card sx={{ mb: 3 }}>
+      {/* Sin perfil todavía */}
+      {!perfil?.id && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          Completá los datos de tu empresa para aparecer en el marketplace y recibir solicitudes de proyectos.
+        </Alert>
+      )}
+
+      {/* Información general */}
+      <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent sx={{ p: 3 }}>
-          <Typography variant="subtitle1" fontWeight={700} gutterBottom>Información general</Typography>
+          <Typography variant="subtitle2" fontWeight={700} color="text.secondary"
+            sx={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 11, mb: 2 }}>
+            Información general
+          </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Nombre de empresa / profesional" value={form.nombreEmpresa}
-                onChange={set('nombreEmpresa')} required />
+              <TextField fullWidth label="Nombre de empresa *" value={form.nombreEmpresa}
+                onChange={set('nombreEmpresa')} error={!!errors.nombreEmpresa}
+                helperText={errors.nombreEmpresa} />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Cédula jurídica (opcional)" value={form.cedulaJuridica}
-                onChange={set('cedulaJuridica')} />
+              <TextField fullWidth label="Cédula jurídica" value={form.cedulaJuridica}
+                onChange={set('cedulaJuridica')}
+                helperText="Ej: 3-101-123456 (opcional)" />
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth multiline rows={3} label="Descripción / bio"
+              <TextField fullWidth multiline rows={3} label="Descripción de la empresa"
                 value={form.bio} onChange={set('bio')}
-                placeholder="Describí tu experiencia, tipo de proyectos que realizás, etc." />
+                placeholder="Describí tu experiencia, tipo de proyectos que realizás, metodología de trabajo, etc." />
             </Grid>
           </Grid>
         </CardContent>
       </Card>
 
-      <Card sx={{ mb: 3 }}>
+      {/* Experiencia y cobertura */}
+      <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent sx={{ p: 3 }}>
-          <Typography variant="subtitle1" fontWeight={700} gutterBottom>Experiencia y cobertura</Typography>
+          <Typography variant="subtitle2" fontWeight={700} color="text.secondary"
+            sx={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 11, mb: 2 }}>
+            Experiencia y cobertura
+          </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={8}>
               <TextField fullWidth label="Especialidades" value={form.especialidades}
                 onChange={set('especialidades')}
-                placeholder="Ej: Remodelación, Obra gris, Pisos"
+                placeholder="Ej: Remodelación, Obra gris, Pisos, Techado"
                 helperText="Separadas por coma" />
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12} sm={4}>
               <TextField fullWidth label="Años de experiencia" value={form.aniosExperiencia}
-                onChange={set('aniosExperiencia')} type="number" inputProps={{ min: 0 }} />
+                onChange={set('aniosExperiencia')} type="number" inputProps={{ min: 0 }}
+                error={!!errors.aniosExperiencia} helperText={errors.aniosExperiencia} />
             </Grid>
             <Grid item xs={12}>
               <TextField fullWidth label="Zonas de cobertura" value={form.zonasCobertura}
@@ -121,34 +166,45 @@ export default function PerfilConstructorEdit() {
         </CardContent>
       </Card>
 
-      <Card sx={{ mb: 3 }}>
+      {/* Contacto */}
+      <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent sx={{ p: 3 }}>
-          <Typography variant="subtitle1" fontWeight={700} gutterBottom>Contacto y redes</Typography>
+          <Typography variant="subtitle2" fontWeight={700} color="text.secondary"
+            sx={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 11, mb: 2 }}>
+            Información de contacto
+          </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Teléfono de contacto" value={form.telefono}
-                onChange={set('telefono')} />
+              <TextField fullWidth label="Teléfono" value={form.telefono}
+                onChange={set('telefono')} placeholder="Ej: 8888-8888" />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Sitio web (opcional)" value={form.sitioWeb}
+              <TextField fullWidth label="Correo electrónico" value={form.emailContacto}
+                onChange={set('emailContacto')} type="email"
+                error={!!errors.emailContacto} helperText={errors.emailContacto} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth label="Sitio web" value={form.sitioWeb}
                 onChange={set('sitioWeb')} placeholder="https://..." />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField fullWidth label="Instagram (opcional)" value={form.instagram}
+              <TextField fullWidth label="Instagram" value={form.instagram}
                 onChange={set('instagram')} placeholder="@usuario" />
             </Grid>
           </Grid>
         </CardContent>
       </Card>
 
+      <Divider sx={{ mb: 3 }} />
+
       <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Button variant="contained" size="large" startIcon={<SaveIcon />}
           onClick={handleSave} disabled={saving}>
-          {saving ? 'Guardando…' : 'Guardar perfil'}
+          {saving ? 'Guardando…' : perfil?.id ? 'Actualizar empresa' : 'Registrar empresa'}
         </Button>
       </Box>
 
-      <Snackbar open={toast.open} autoHideDuration={3000}
+      <Snackbar open={toast.open} autoHideDuration={4000}
         onClose={() => setToast(t => ({ ...t, open: false }))}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
         <Alert severity={toast.severity} onClose={() => setToast(t => ({ ...t, open: false }))}>

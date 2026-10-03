@@ -72,40 +72,25 @@ function greeting() {
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
 
-function StatCard({ label, value, sub, icon: Icon, iconBg, iconColor, onClick }) {
+function StatCard({ label, value, sub, onClick }) {
   return (
-    <Box
-      onClick={onClick}
-      sx={{
-        bgcolor: '#fff', border: '1px solid #E2E8F0', borderRadius: '12px',
-        p: '20px 24px',
-        cursor: onClick ? 'pointer' : 'default',
-        transition: 'all 0.2s ease',
-        '&:hover': onClick ? {
-          boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-          transform: 'translateY(-2px)',
-          borderColor: '#CBD5E1',
-        } : {},
-      }}
-    >
-      {Icon && (
-        <Box sx={{
-          width: 44, height: 44, borderRadius: '10px',
-          bgcolor: iconBg ?? '#EFF6FF',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          mb: 2,
-        }}>
-          <Icon sx={{ fontSize: 22, color: iconColor ?? ACCENT }} />
-        </Box>
-      )}
-      <Typography sx={{ fontSize: 30, fontWeight: 800, color: '#0F172A', lineHeight: 1.1, letterSpacing: '-0.5px' }}>
+    <Box onClick={onClick} sx={{
+      bgcolor: '#fff',
+      border: '1px solid #E2E8F0',
+      borderLeft: `3px solid ${ACCENT}`,
+      borderRadius: '8px',
+      p: '16px 20px',
+      cursor: onClick ? 'pointer' : 'default',
+      '&:hover': onClick ? { bgcolor: '#FAFBFC' } : {},
+    }}>
+      <Typography sx={{ fontSize: 28, fontWeight: 800, color: '#0F172A', lineHeight: 1, letterSpacing: '-0.5px', mb: 0.5 }}>
         {value ?? '—'}
       </Typography>
-      <Typography sx={{ fontSize: 13, color: '#64748B', fontWeight: 500, mt: 0.5 }}>
+      <Typography sx={{ fontSize: 12.5, color: '#64748B', fontWeight: 500 }}>
         {label}
       </Typography>
       {sub && (
-        <Typography sx={{ fontSize: 12, mt: 0.4, color: sub.startsWith('⚠') ? '#D97706' : '#22C55E', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <Typography sx={{ fontSize: 11.5, mt: 0.5, color: sub.startsWith('⚠') ? '#D97706' : '#64748B' }}>
           {sub}
         </Typography>
       )}
@@ -325,54 +310,52 @@ function CotizacionesIAWidget() {
   if (!loading && items.length === 0) return null;
 
   return (
-    <Box sx={{ bgcolor: '#131929', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.07)', overflow: 'hidden' }}>
-      <Box sx={{ px: 2, pt: 2, pb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <AutoAwesomeIcon sx={{ fontSize: 15, color: '#60A5FA' }} />
-          <Typography fontSize={13} fontWeight={700} sx={{ color: '#fff' }}>Cotizaciones IA recientes</Typography>
-        </Box>
-        <Button size="small" onClick={() => navigate('/cotizaciones-ia')}
-          sx={{ fontSize: 11, color: '#60A5FA', textTransform: 'none', p: 0, minWidth: 0 }}>
-          Ver todas →
+    <Panel
+      title="Cotizaciones IA recientes"
+      noPad
+      action={
+        <Button size="small" endIcon={<ArrowForwardIcon sx={{ fontSize: 11 }} />}
+          onClick={() => navigate('/cotizaciones-ia')}
+          sx={{ fontSize: 11, color: ACCENT, py: 0 }}>
+          Ver todas
         </Button>
-      </Box>
-      <Box sx={{ px: 1.5, pb: 1.5 }}>
-        {loading
-          ? [1,2,3].map(i => (
-              <Box key={i} sx={{ p: 1, borderRadius: 1 }}>
-                <Skeleton variant="text" width="80%" sx={{ bgcolor: 'rgba(255,255,255,0.08)' }} />
-                <Skeleton variant="text" width="50%" sx={{ bgcolor: 'rgba(255,255,255,0.05)' }} />
-              </Box>
-            ))
-          : items.map((item, idx) => {
-              const plan = PLAN_COLORS[item.plan] ?? PLAN_COLORS.estandar;
-              return (
-                <Box key={item.id}
-                  onClick={() => navigate(`/cotizacion/${item.proyectoId}`)}
-                  sx={{
-                    px: 1, py: 1, borderRadius: 1, cursor: 'pointer',
-                    borderBottom: idx < items.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                    '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-                    <Typography fontSize={12.5} fontWeight={600} sx={{ color: 'rgba(255,255,255,0.82)' }} noWrap>
-                      {item.proyectoTitulo}
-                    </Typography>
-                    <Chip label={plan.label} size="small" sx={{
-                      bgcolor: plan.bg, color: plan.color, fontWeight: 700,
-                      fontSize: 10, height: 18, borderRadius: '4px', flexShrink: 0,
-                    }} />
-                  </Box>
-                  <Typography fontSize={11} sx={{ color: 'rgba(255,255,255,0.38)', mt: 0.2 }}>
-                    {item.clienteNombre} · {(item.rangoMaximo ?? 0).toLocaleString('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 })}
+      }
+    >
+      {loading
+        ? [1,2,3].map(i => (
+            <Box key={i} sx={{ px: 2.5, py: 1.25 }}>
+              <Skeleton height={16} width="70%" />
+              <Skeleton height={12} width="45%" sx={{ mt: 0.5 }} />
+            </Box>
+          ))
+        : items.map((item, idx) => {
+            const plan = PLAN_COLORS[item.plan] ?? PLAN_COLORS.estandar;
+            return (
+              <Box key={item.id}
+                onClick={() => navigate(`/cotizacion/${item.proyectoId}`)}
+                sx={{
+                  px: 2.5, py: 1.25, cursor: 'pointer',
+                  borderBottom: idx < items.length - 1 ? '1px solid #F1F5F9' : 'none',
+                  '&:hover': { bgcolor: '#F8FAFC' },
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                  <Typography fontSize={12.5} fontWeight={600} color="text.primary" noWrap>
+                    {item.proyectoTitulo}
                   </Typography>
+                  <Chip label={plan.label} size="small" sx={{
+                    bgcolor: plan.bg, color: plan.color, fontWeight: 700,
+                    fontSize: 10, height: 18, flexShrink: 0,
+                  }} />
                 </Box>
-              );
-            })
-        }
-      </Box>
-    </Box>
+                <Typography fontSize={11} color="text.secondary" sx={{ mt: 0.2 }}>
+                  {item.clienteNombre} · {(item.rangoMaximo ?? 0).toLocaleString('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 })}
+                </Typography>
+              </Box>
+            );
+          })
+      }
+    </Panel>
   );
 }
 
@@ -493,11 +476,11 @@ function DashboardCliente({ usuario }) {
     .slice(0, 6);
 
   const chartData = [
-    { name: 'Borrador',    count: borradores.length,   fill: '#94A3B8' },
-    { name: 'Publicado',   count: proyectos.filter(p => p.estado === 'Publicado').length, fill: '#22C55E' },
-    { name: 'Propuestas',  count: enPropuestas.length, fill: '#F59E0B' },
-    { name: 'En curso',    count: enCurso.length,      fill: '#3B82F6' },
-    { name: 'Completado',  count: completados.length,  fill: '#10B981' },
+    { name: 'Borrador',    count: borradores.length,                                        fill: '#CBD5E1' },
+    { name: 'Publicado',   count: proyectos.filter(p => p.estado === 'Publicado').length,   fill: ACCENT },
+    { name: 'Propuestas',  count: enPropuestas.length,                                      fill: ACCENT },
+    { name: 'En curso',    count: enCurso.length,                                           fill: ACCENT },
+    { name: 'Completado',  count: completados.length,                                       fill: '#64748B' },
   ];
 
   return (
@@ -535,10 +518,10 @@ function DashboardCliente({ usuario }) {
         </Box>
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' }, gap: 1.5, mb: 3 }}>
-          <StatCard label="Total proyectos"  value={proyectos.length}    icon={FolderOpenIcon}   iconBg="#EFF6FF"  iconColor={ACCENT}    onClick={() => navigate('/mis-proyectos')} />
-          <StatCard label="En propuestas"    value={enPropuestas.length} icon={SendIcon}          iconBg="#FFFBEB"  iconColor="#D97706"   sub={enPropuestas.length > 0 ? 'Pendientes de revisión' : undefined} onClick={() => navigate('/mis-proyectos')} />
-          <StatCard label="En ejecución"     value={enCurso.length}      icon={ConstructionIcon}  iconBg="#ECFDF5"  iconColor="#16A34A"   onClick={() => navigate('/mis-proyectos')} />
-          <StatCard label="Completados"      value={completados.length}  icon={CheckCircleIcon}   iconBg="#F1F5F9"  iconColor="#64748B"   onClick={() => navigate('/mis-proyectos')} />
+          <StatCard label="Total proyectos" value={proyectos.length}     onClick={() => navigate('/mis-proyectos')} />
+          <StatCard label="En propuestas"   value={enPropuestas.length} sub={enPropuestas.length > 0 ? 'Pendientes de revisión' : undefined} onClick={() => navigate('/mis-proyectos')} />
+          <StatCard label="En ejecución"    value={enCurso.length}      onClick={() => navigate('/mis-proyectos')} />
+          <StatCard label="Completados"     value={completados.length}  onClick={() => navigate('/mis-proyectos')} />
         </Box>
       )}
 
@@ -799,10 +782,10 @@ function DashboardConstructor({ usuario }) {
   };
 
   const chartData = [
-    { name: 'Enviadas',   count: propuestas.length, fill: '#94A3B8' },
-    { name: 'En revisión', count: pipeline.length,   fill: '#3B82F6' },
-    { name: 'Aceptadas',  count: aceptadas.length,  fill: '#10B981' },
-    { name: 'Rechazadas', count: rechazadas.length,  fill: '#EF4444' },
+    { name: 'Enviadas',    count: propuestas.length, fill: '#CBD5E1' },
+    { name: 'En revisión', count: pipeline.length,   fill: ACCENT    },
+    { name: 'Aceptadas',   count: aceptadas.length,  fill: '#64748B' },
+    { name: 'Rechazadas',  count: rechazadas.length, fill: '#94A3B8' },
   ];
 
   const TH = ({ children, hide }) => (
@@ -854,10 +837,10 @@ function DashboardConstructor({ usuario }) {
         </Box>
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2,1fr)', sm: 'repeat(4,1fr)' }, gap: 1.5, mb: 3 }}>
-          <StatCard label="Obras activas"   value={obrasActivas.length}   icon={ConstructionIcon}        iconBg="#EFF6FF"  iconColor={ACCENT}    sub={atrasadas.length > 0 ? `⚠ ${atrasadas.length} con retraso` : 'Al día'} onClick={() => navigate('/mis-clientes')} />
-          <StatCard label="Total facturado" value={fmt(totalFacturado)}   icon={ReceiptIcon}             iconBg="#ECFDF5"  iconColor="#16A34A"   sub={`${facturas.filter(f=>f.estado!=='Cancelada').length} facturas`} onClick={() => navigate('/facturacion')} />
-          <StatCard label="Por cobrar"      value={fmt(pendiente)}        icon={AccountBalanceWalletIcon} iconBg="#FFFBEB"  iconColor="#D97706"   sub={pendiente > 0 ? 'Pendiente de pago' : 'Sin pendientes'} />
-          <StatCard label="Pipeline activo" value={pipeline.length}       icon={TrendingUpIcon}           iconBg="#F5F3FF"  iconColor="#7C3AED"   sub={`${winRate}% tasa de éxito`} onClick={() => navigate('/mis-propuestas')} />
+          <StatCard label="Obras activas"   value={obrasActivas.length}  sub={atrasadas.length > 0 ? `⚠ ${atrasadas.length} con retraso` : 'Al día'} onClick={() => navigate('/mis-clientes')} />
+          <StatCard label="Total facturado" value={fmt(totalFacturado)}  sub={`${facturas.filter(f=>f.estado!=='Cancelada').length} facturas`} onClick={() => navigate('/facturacion')} />
+          <StatCard label="Por cobrar"      value={fmt(pendiente)}       sub={pendiente > 0 ? 'Pendiente de pago' : 'Sin pendientes'} />
+          <StatCard label="Pipeline activo" value={pipeline.length}      sub={`${winRate}% tasa de éxito`} onClick={() => navigate('/mis-propuestas')} />
         </Box>
       )}
 
@@ -1207,10 +1190,10 @@ function DashboardAdmin() {
   const pct = u.total ? Math.round((u.activos / u.total) * 100) : 0;
 
   const chartData = [
-    { name: 'Activos',    count: u.activos       ?? 0, fill: '#10B981' },
-    { name: 'Bloqueados', count: u.bloqueados    ?? 0, fill: '#EF4444' },
-    { name: 'Nuevos 30d', count: u.nuevosEste30d ?? 0, fill: '#F59E0B' },
-    { name: 'Pendientes', count: u.pendientes    ?? 0, fill: '#F59E0B' },
+    { name: 'Activos',    count: u.activos       ?? 0, fill: ACCENT    },
+    { name: 'Bloqueados', count: u.bloqueados    ?? 0, fill: '#94A3B8' },
+    { name: 'Nuevos 30d', count: u.nuevosEste30d ?? 0, fill: '#CBD5E1' },
+    { name: 'Pendientes', count: u.pendientes    ?? 0, fill: '#CBD5E1' },
   ];
 
   return (
