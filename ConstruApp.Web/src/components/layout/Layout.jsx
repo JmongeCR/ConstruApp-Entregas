@@ -50,7 +50,7 @@ const getInitials = (nombre) =>
 const SECTIONS_ADMIN = [
   { label: 'General', items: [
     { label: 'Dashboard',    path: '/',           Icon: DashboardIcon },
-    { label: 'Marketplace',  path: '/marketplace', Icon: StorefrontIcon },
+    { label: 'Directorio',   path: '/marketplace', Icon: BusinessIcon },
   ]},
   { label: 'Catálogo', items: [
     { label: 'Materiales', path: '/materiales', Icon: InventoryIcon },
@@ -64,7 +64,7 @@ const SECTIONS_ADMIN = [
 const SECTIONS_CONSTRUCTOR = [
   { label: 'General', items: [
     { label: 'Dashboard',   path: '/',           Icon: DashboardIcon },
-    { label: 'Marketplace', path: '/marketplace', Icon: StorefrontIcon },
+    { label: 'Proyectos',   path: '/marketplace', Icon: StorefrontIcon },
   ]},
   { label: 'Gestión', items: [
     { label: 'Mis propuestas', path: '/mis-propuestas', Icon: SendIcon },
@@ -95,8 +95,8 @@ const SECTIONS_CLIENTE = [
     { label: 'Calendario',      path: '/calendario',      Icon: CalendarMonthIcon },
     { label: 'Cotizaciones IA', path: '/cotizaciones-ia', Icon: AutoAwesomeIcon },
   ]},
-  { label: 'Marketplace', items: [
-    { label: 'Constructores', path: '/marketplace', Icon: BusinessIcon },
+  { label: 'Directorio', items: [
+    { label: 'Constructoras', path: '/marketplace', Icon: BusinessIcon },
   ]},
   { label: 'Configuración', items: [
     { label: 'Configuración', path: '/configuracion', Icon: SettingsIcon },
