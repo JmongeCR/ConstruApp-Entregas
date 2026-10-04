@@ -83,7 +83,7 @@ function SectionNav({ sections }) {
 /* ── Panel de resumen ────────────────────────────────────────────────────── */
 function SummaryPanel({ form }) {
   const tipo     = TIPOS.find(t => t.value === form.tipoProyecto);
-  const ubicacion = [form.canton, form.provincia].filter(Boolean).join(', ');
+  const ubicacion = [form.distrito, form.canton, form.provincia].filter(Boolean).join(', ');
 
   const rows = [
     { label: 'Tipo',        value: tipo?.label ?? null },
@@ -149,6 +149,7 @@ export default function PublicarProyecto() {
     descripcion:    '',
     tipoProyecto:   '',
     canton:         '',
+    distrito:       '',
     provincia:      '',
     presupuestoMax: '',
     areaM2:         '',
@@ -157,10 +158,13 @@ export default function PublicarProyecto() {
   const [touched, setTouched] = useState({});
 
   /* Ubicaciones API */
-  const [provincias,  setProvincias]  = useState([]);
-  const [cantones,    setCantones]    = useState([]);
-  const [loadingUbic, setLoadingUbic] = useState(false);
-  const [provinciaId, setProvinciaId] = useState('');
+  const [provincias,      setProvincias]      = useState([]);
+  const [cantones,        setCantones]        = useState([]);
+  const [distritos,       setDistritos]       = useState([]);
+  const [loadingCantones, setLoadingCantones] = useState(false);
+  const [loadingDistritos,setLoadingDistritos]= useState(false);
+  const [provinciaId,     setProvinciaId]     = useState('');
+  const [cantonId,        setCantonId]        = useState('');
 
   const toOptions = (obj) => Object.entries(obj).map(([id, name]) => ({ id, name }));
 
@@ -172,14 +176,24 @@ export default function PublicarProyecto() {
   }, []);
 
   useEffect(() => {
-    if (!provinciaId) { setCantones([]); return; }
-    setLoadingUbic(true);
+    if (!provinciaId) { setCantones([]); setDistritos([]); return; }
+    setLoadingCantones(true);
     fetch(`https://ubicaciones.paginasweb.cr/provincia/${provinciaId}/cantones.json`)
       .then(r => r.json())
       .then(data => setCantones(toOptions(data)))
       .catch(() => setCantones([]))
-      .finally(() => setLoadingUbic(false));
+      .finally(() => setLoadingCantones(false));
   }, [provinciaId]);
+
+  useEffect(() => {
+    if (!provinciaId || !cantonId) { setDistritos([]); return; }
+    setLoadingDistritos(true);
+    fetch(`https://ubicaciones.paginasweb.cr/provincia/${provinciaId}/canton/${cantonId}/distritos.json`)
+      .then(r => r.json())
+      .then(data => setDistritos(toOptions(data)))
+      .catch(() => setDistritos([]))
+      .finally(() => setLoadingDistritos(false));
+  }, [provinciaId, cantonId]);
 
   const set = (f) => (e) => {
     setTouched(p => ({ ...p, [f]: true }));
@@ -227,8 +241,9 @@ export default function PublicarProyecto() {
         titulo:         form.titulo,
         descripcion:    form.descripcion,
         tipoProyecto:   form.tipoProyecto,
-        canton:         form.canton || null,
-        provincia:      form.provincia,
+        canton:         form.canton    || null,
+        distrito:       form.distrito  || null,
+        provincia:      form.provincia || null,
         presupuestoMax: form.presupuestoMax ? parseFloat(form.presupuestoMax) : null,
         areaM2:         form.areaM2 ? parseFloat(form.areaM2) : null,
       });
@@ -448,7 +463,7 @@ export default function PublicarProyecto() {
           {/* SECCIÓN: Ubicación */}
           <FormSection title="Ubicación" badge="Opcional" sectionRef={ubicRef}>
             <Grid container spacing={2.5}>
-              <Grid size={{ xs: 12, sm: 5 }}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <Autocomplete
                   fullWidth
                   options={provincias}
@@ -456,8 +471,8 @@ export default function PublicarProyecto() {
                   value={provincias.find(p => p.id === provinciaId) ?? null}
                   onChange={(_, val) => {
                     setProvinciaId(val?.id ?? '');
-                    setForm(p => ({ ...p, provincia: val?.name ?? '', canton: '' }));
-                    setCantones([]);
+                    setCantonId('');
+                    setForm(p => ({ ...p, provincia: val?.name ?? '', canton: '', distrito: '' }));
                   }}
                   isOptionEqualToValue={(o, v) => o.id === v.id}
                   loading={provincias.length === 0}
@@ -468,22 +483,42 @@ export default function PublicarProyecto() {
                   )}
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 7 }}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <Autocomplete
                   fullWidth
                   options={cantones}
                   getOptionLabel={(o) => (typeof o === 'string' ? o : o.name)}
-                  value={cantones.find(c => c.name === form.canton) ?? null}
+                  value={cantones.find(c => c.id === cantonId) ?? null}
                   onChange={(_, val) => {
-                    setForm(p => ({ ...p, canton: val?.name ?? '' }));
+                    setCantonId(val?.id ?? '');
+                    setForm(p => ({ ...p, canton: val?.name ?? '', distrito: '' }));
                   }}
                   disabled={!provinciaId}
-                  loading={loadingUbic}
-                  loadingText="Cargando cantones…"
+                  loading={loadingCantones}
+                  loadingText="Cargando…"
                   noOptionsText="Sin resultados"
                   isOptionEqualToValue={(o, v) => o.id === v.id}
                   renderInput={(params) => (
-                    <TextField {...params} label="Cantón"
+                    <TextField {...params} label="Cantón" />
+                  )}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <Autocomplete
+                  fullWidth
+                  options={distritos}
+                  getOptionLabel={(o) => (typeof o === 'string' ? o : o.name)}
+                  value={distritos.find(d => d.name === form.distrito) ?? null}
+                  onChange={(_, val) => {
+                    setForm(p => ({ ...p, distrito: val?.name ?? '' }));
+                  }}
+                  disabled={!cantonId}
+                  loading={loadingDistritos}
+                  loadingText="Cargando…"
+                  noOptionsText="Sin resultados"
+                  isOptionEqualToValue={(o, v) => o.id === v.id}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Distrito"
                       helperText="Ayuda a los constructores de tu zona a encontrar tu proyecto" />
                   )}
                 />
