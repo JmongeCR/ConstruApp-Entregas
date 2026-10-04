@@ -40,7 +40,8 @@ const Calendario         = lazy(() => import('./pages/calendario/Calendario'));
 const AdminPanel         = lazy(() => import('./pages/admin/AdminPanel'));
 const ObraDetalle        = lazy(() => import('./pages/obra/ObraDetalle'));
 const MisClientes        = lazy(() => import('./pages/constructor/MisClientes'));
-const Propuestas         = lazy(() => import('./pages/propuestas/Propuestas'));
+const MisPropuestas      = lazy(() => import('./pages/propuestas/Propuestas').then(m => ({ default: m.MisPropuestas })));
+const PropuestasProyecto = lazy(() => import('./pages/propuestas/Propuestas').then(m => ({ default: m.PropuestasProyecto })));
 const Cotizaciones       = lazy(() => import('./pages/cotizaciones/Cotizaciones'));
 const CotizacionDetalle  = lazy(() => import('./pages/cotizacion/CotizacionDetalle'));
 const Facturacion        = lazy(() => import('./pages/facturacion/Facturacion'));
@@ -330,7 +331,8 @@ function AppRoutes() {
         {/* Constructor */}
         <Route path="/trabajadores"            element={<RoleGuard roles={['Constructor','Admin']}><Trabajadores /></RoleGuard>} />
         <Route path="/mis-clientes"            element={<RoleGuard roles={['Constructor','Admin']}><MisClientes /></RoleGuard>} />
-        <Route path="/propuestas"              element={<RoleGuard roles={['Constructor','Admin']}><Propuestas /></RoleGuard>} />
+        <Route path="/propuestas"              element={<RoleGuard roles={['Constructor','Admin']}><MisPropuestas /></RoleGuard>} />
+        <Route path="/propuestas/:proyectoId"  element={<RoleGuard roles={['Cliente','Admin']}><PropuestasProyecto /></RoleGuard>} />
         <Route path="/favoritos-proveedores"   element={<RoleGuard roles={['Constructor','Admin']}><ProveedoresFavoritos /></RoleGuard>} />
         <Route path="/perfiles/constructor"    element={<PerfilesConstructor />} />
         <Route path="/mi-empresa"              element={<RoleGuard roles={['Constructor','Admin']}><PerfilConstructorEdit /></RoleGuard>} />
