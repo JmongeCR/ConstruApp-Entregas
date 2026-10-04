@@ -331,7 +331,7 @@ export default function MisProyectos() {
                       </TableCell>
                       <TableCell>
                         <Typography fontSize={12.5} color="text.secondary">
-                          {[p.canton, p.provincia].filter(Boolean).join(', ') || '—'}
+                          {[p.distrito, p.canton, p.provincia].filter(Boolean).join(', ') || '—'}
                         </Typography>
                       </TableCell>
                       <TableCell>
