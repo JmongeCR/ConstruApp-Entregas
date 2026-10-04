@@ -110,7 +110,7 @@ export default function Trabajadores() {
         </Stack>
       )}
 
-      <Card variant="outlined">
+      <Card variant="outlined" sx={{ overflowX: 'auto' }}>
         <TableContainer>
           <Table size="small">
             <TableHead>

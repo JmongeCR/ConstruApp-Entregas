@@ -560,7 +560,7 @@ export default function PublicarProyecto() {
             </Button>
             <Button variant="outlined" startIcon={<BookmarkIcon sx={{ fontSize: 15 }} />}
               onClick={() => navigate('/mis-proyectos', { state: { success: 'Proyecto guardado como borrador.' } })}
-              disabled={loading}>
+              disabled={loading} sx={{ whiteSpace: 'nowrap' }}>
               Guardar borrador
             </Button>
             <Button variant="contained" startIcon={<AddIcon sx={{ fontSize: 15 }} />}

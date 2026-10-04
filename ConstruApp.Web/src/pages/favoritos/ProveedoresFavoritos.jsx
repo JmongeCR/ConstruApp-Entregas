@@ -58,18 +58,19 @@ export default function ProveedoresFavoritos() {
         </Grid>
       ) : favoritos.length === 0 ? (
         <Box sx={{
-          textAlign: 'center', py: 10,
+          textAlign: 'center', py: { xs: 5, sm: 8 },
           border: '1px dashed', borderColor: 'divider', borderRadius: 2,
           bgcolor: 'action.hover',
         }}>
-          <FavoriteBorderIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+          <FavoriteBorderIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1.5 }} />
           <Typography color="text.secondary" fontWeight={600} fontSize={15} mb={0.5}>
             Aún no tenés proveedores favoritos
           </Typography>
-          <Typography color="text.disabled" fontSize={13} mb={3}>
+          <Typography color="text.disabled" fontSize={13} mb={2.5} sx={{ maxWidth: 360, mx: 'auto', px: 2 }}>
             Guardá proveedores del marketplace para acceder rápido a sus datos de contacto.
           </Typography>
-          <Button variant="outlined" startIcon={<StoreIcon />} onClick={() => navigate('/marketplace')}>
+          <Button variant="contained" startIcon={<StoreIcon />} onClick={() => navigate('/marketplace')}
+            sx={{ boxShadow: 'none' }}>
             Explorar proveedores
           </Button>
         </Box>
