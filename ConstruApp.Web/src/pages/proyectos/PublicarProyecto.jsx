@@ -15,14 +15,14 @@ import PageHeader from '../../components/common/PageHeader';
 const ACCENT = '#2563EB';
 
 const TIPOS = [
-  { value: 'Remodelacion',      label: 'Remodelación' },
-  { value: 'ObraGris',          label: 'Obra gris' },
-  { value: 'ElectricoPlomeria', label: 'Eléctrico / Plomería' },
-  { value: 'Pintura',           label: 'Pintura' },
-  { value: 'Pisos',             label: 'Pisos' },
-  { value: 'Techos',            label: 'Techos' },
-  { value: 'PiscinaJardin',     label: 'Piscina / Jardín' },
-  { value: 'Otro',              label: 'Otro' },
+  { value: 'Remodelacion',      label: 'Remodelación',        desc: 'Cocinas, baños, ampliaciones internas' },
+  { value: 'ObraGris',          label: 'Obra gris',            desc: 'Cimentación, columnas, paredes, losas' },
+  { value: 'ElectricoPlomeria', label: 'Eléctrico / Plomería', desc: 'Instalaciones, reparaciones, certificaciones' },
+  { value: 'Pintura',           label: 'Pintura',              desc: 'Interior, exterior, texturas y acabados' },
+  { value: 'Pisos',             label: 'Pisos',                desc: 'Cerámica, porcelanato, madera, vinilo' },
+  { value: 'Techos',            label: 'Techos',               desc: 'Cubiertas, estructura, impermeabilización' },
+  { value: 'PiscinaJardin',     label: 'Piscina / Jardín',     desc: 'Diseño, construcción, mantenimiento' },
+  { value: 'Otro',              label: 'Otro',                 desc: 'Proyectos especiales o mixtos' },
 ];
 
 const PROVINCIAS = ['San José','Alajuela','Cartago','Heredia','Guanacaste','Puntarenas','Limón'];
@@ -36,9 +36,9 @@ const PLAN_META = {
 /* ── Sección del formulario ──────────────────────────────────────────────── */
 function FormSection({ title, badge, sectionRef, children }) {
   return (
-    <Box ref={sectionRef} sx={{ mb: 4.5, scrollMarginTop: 16 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}>
-        <Typography fontWeight={700} fontSize={13.5} color="text.primary">{title}</Typography>
+    <Box ref={sectionRef} sx={{ mb: 4, scrollMarginTop: 16 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+        <Typography fontWeight={700} fontSize={13.5}>{title}</Typography>
         {badge && (
           <Chip label={badge} size="small" variant="outlined"
             sx={{ fontSize: 10.5, height: 18, color: '#64748B', borderColor: '#CBD5E1' }} />
@@ -68,10 +68,7 @@ function SectionNav({ sections }) {
             }}>
             {s.done
               ? <CheckIcon sx={{ fontSize: 13, color: ACCENT, flexShrink: 0 }} />
-              : <Box sx={{
-                  width: 13, height: 13, borderRadius: '50%',
-                  border: '1.5px solid #CBD5E1', flexShrink: 0,
-                }} />
+              : <Box sx={{ width: 13, height: 13, borderRadius: '50%', border: '1.5px solid #CBD5E1', flexShrink: 0 }} />
             }
             <Typography fontSize={12.5} color={s.done ? 'text.primary' : '#64748B'}
               fontWeight={s.done ? 500 : 400}>
@@ -86,11 +83,12 @@ function SectionNav({ sections }) {
 
 /* ── Panel de resumen ────────────────────────────────────────────────────── */
 function SummaryPanel({ form }) {
-  const tipo = TIPOS.find(t => t.value === form.tipoProyecto);
+  const tipo     = TIPOS.find(t => t.value === form.tipoProyecto);
+  const ubicacion = [form.canton, form.provincia].filter(Boolean).join(', ');
+
   const rows = [
     { label: 'Tipo',        value: tipo?.label ?? null },
-    { label: 'Provincia',   value: form.provincia },
-    { label: 'Cantón',      value: form.canton || null },
+    { label: 'Ubicación',   value: ubicacion || null },
     { label: 'Área',        value: form.areaM2 ? `${form.areaM2} m²` : null },
     { label: 'Presupuesto', value: form.presupuestoMax
         ? `₡ ${parseFloat(form.presupuestoMax).toLocaleString('es-CR')}` : null },
@@ -111,21 +109,16 @@ function SummaryPanel({ form }) {
           <Chip label="Borrador" size="small"
             sx={{ fontSize: 10.5, height: 20, bgcolor: '#FEF3C7', color: '#92400E' }} />
         </Box>
-
         <Box sx={{ px: 2, py: 2 }}>
-          <Typography fontSize={13} fontWeight={700}
+          <Typography fontSize={13.5} fontWeight={700} lineHeight={1.35}
             color={form.titulo ? 'text.primary' : 'text.disabled'}
-            sx={{ mb: 2, lineHeight: 1.35 }}>
+            sx={{ mb: 2 }}>
             {form.titulo || 'Sin nombre'}
           </Typography>
-
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.875 }}>
             {rows.map(r => (
-              <Box key={r.label}
-                sx={{ display: 'flex', justifyContent: 'space-between', gap: 1.5 }}>
-                <Typography fontSize={12} color="text.disabled" sx={{ flexShrink: 0 }}>
-                  {r.label}
-                </Typography>
+              <Box key={r.label} sx={{ display: 'flex', justifyContent: 'space-between', gap: 1.5 }}>
+                <Typography fontSize={12} color="text.disabled" sx={{ flexShrink: 0 }}>{r.label}</Typography>
                 <Typography fontSize={12} fontWeight={r.value ? 500 : 400}
                   color={r.value ? 'text.secondary' : 'text.disabled'}
                   sx={{ textAlign: 'right' }}>
@@ -168,44 +161,39 @@ export default function PublicarProyecto() {
     setTouched(p => ({ ...p, [f]: true }));
     setForm(p => ({ ...p, [f]: e.target.value }));
   };
+  const touch = (f) => () => setTouched(p => ({ ...p, [f]: true }));
 
-  /* Refs para scroll */
-  const infoRef    = useRef(null);
-  const ubicRef    = useRef(null);
-  const alcanceRef = useRef(null);
-  const presuRef   = useRef(null);
+  /* Refs para scroll de secciones */
+  const proyectoRef = useRef(null);
+  const ubicRef     = useRef(null);
+  const detallesRef = useRef(null);
 
   const scrollTo = (ref) =>
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   /* Completitud de secciones */
-  const infoDone    = !!form.tipoProyecto && !!form.titulo.trim() && form.descripcion.trim().length >= 20;
-  const ubicDone    = !!form.canton;
-  const alcanceDone = !!form.areaM2;
-  const presuDone   = !!form.presupuestoMax;
+  const proyectoDone  = !!form.tipoProyecto && !!form.titulo.trim() && form.descripcion.trim().length >= 20;
+  const ubicDone      = !!form.canton;
+  const detallesDone  = !!form.areaM2 || !!form.presupuestoMax;
 
   const sections = [
-    { label: 'Información general', done: infoDone,    onNav: () => scrollTo(infoRef) },
-    { label: 'Ubicación',           done: ubicDone,    onNav: () => scrollTo(ubicRef) },
-    { label: 'Alcance',             done: alcanceDone, onNav: () => scrollTo(alcanceRef) },
-    { label: 'Presupuesto',         done: presuDone,   onNav: () => scrollTo(presuRef) },
+    { label: 'Proyecto',   done: proyectoDone, onNav: () => scrollTo(proyectoRef) },
+    { label: 'Ubicación',  done: ubicDone,     onNav: () => scrollTo(ubicRef) },
+    { label: 'Detalles',   done: detallesDone, onNav: () => scrollTo(detallesRef) },
   ];
 
-  /* Validaciones inline */
+  /* Validaciones inline (solo post-touch) */
   const err = {
-    titulo:       touched.titulo && !form.titulo.trim()
-                    ? 'El nombre es requerido.' : '',
-    tipoProyecto: touched.tipoProyecto && !form.tipoProyecto
-                    ? 'Seleccioná un tipo.' : '',
-    descripcion:  touched.descripcion && form.descripcion.trim().length < 20
-                    ? 'Mínimo 20 caracteres.' : '',
+    titulo:       touched.titulo       && !form.titulo.trim()                  ? 'El nombre es requerido.'    : '',
+    tipoProyecto: touched.tipoProyecto && !form.tipoProyecto                   ? 'Seleccioná un tipo.'        : '',
+    descripcion:  touched.descripcion  && form.descripcion.trim().length < 20  ? 'Mínimo 20 caracteres.'      : '',
   };
 
-  const handlePublicar = async () => {
-    /* Mostrar todos los errores de campos obligatorios */
+  /* Acción principal del formulario — crea proyecto + genera IA */
+  const handleGenerarEstimacion = async () => {
     setTouched({ titulo: true, tipoProyecto: true, descripcion: true });
     if (!form.tipoProyecto || !form.titulo.trim() || form.descripcion.trim().length < 20) {
-      scrollTo(infoRef);
+      scrollTo(proyectoRef);
       return;
     }
     setError('');
@@ -229,13 +217,14 @@ export default function PublicarProyecto() {
       setPlanes(arr);
       setStep(1);
     } catch {
-      setError('Error al crear el proyecto. Intentá de nuevo.');
+      setError('No fue posible crear el proyecto. Revisá tu conexión e intentá de nuevo.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleConfirmarPublicar = async () => {
+  /* Acción final — publica el proyecto ya creado */
+  const handlePublicar = async () => {
     setLoading(true);
     try {
       await proyectosApi.publicar(proyecto.id);
@@ -247,10 +236,13 @@ export default function PublicarProyecto() {
     }
   };
 
-  /* ── Paso 1: resultado cotización IA ──────────────────────────────── */
+  /* ── Paso 1: Cotización IA — revisar antes de publicar ───────────── */
   if (step === 1) return (
     <Box sx={{ maxWidth: 900, mx: 'auto' }}>
-      <PageHeader title="Cotización estimada" subtitle="Revisá los rangos antes de publicar el proyecto." />
+      <PageHeader
+        title="Estimación de costos"
+        subtitle="Revisá los rangos estimados antes de publicar tu proyecto."
+      />
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
         {planes.map((plan) => {
@@ -325,7 +317,7 @@ export default function PublicarProyecto() {
         );
       })()}
 
-      {/* Acciones */}
+      {/* Acciones finales */}
       <Box sx={{
         display: 'flex', gap: 3, alignItems: 'flex-start', flexWrap: 'wrap',
         bgcolor: '#F8FAFC', border: '1px solid #E5E7EB', borderRadius: 1.5, p: 3,
@@ -335,19 +327,19 @@ export default function PublicarProyecto() {
             ¿Listo para recibir propuestas?
           </Typography>
           <Typography fontSize={13} color="text.secondary">
-            Al publicar, constructores verificados pueden ver tu proyecto y enviarte cotizaciones.
+            Al publicar, constructores verificados podrán ver tu proyecto y enviarte cotizaciones.
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0 }}>
           <Button variant="contained" startIcon={<PublishIcon />}
-            onClick={handleConfirmarPublicar} disabled={loading}
+            onClick={handlePublicar} disabled={loading}
             sx={{ whiteSpace: 'nowrap', boxShadow: 'none' }}>
             {loading ? <CircularProgress size={16} color="inherit" /> : 'Publicar proyecto'}
           </Button>
           <Button variant="outlined" startIcon={<BookmarkIcon />}
             onClick={() => navigate('/mis-proyectos', { state: { success: 'Proyecto guardado como borrador.' } })}
             sx={{ whiteSpace: 'nowrap' }}>
-            Guardar borrador
+            Guardar como borrador
           </Button>
         </Box>
       </Box>
@@ -356,72 +348,84 @@ export default function PublicarProyecto() {
     </Box>
   );
 
-  /* ── Paso 0: formulario principal ─────────────────────────────────── */
+  /* ── Paso 0: Formulario principal ─────────────────────────────────── */
   return (
     <Box sx={{ maxWidth: 1060, mx: 'auto' }}>
-      {/* Header */}
       <PageHeader
         title="Nuevo proyecto"
-        subtitle="Registrá la información principal de la obra."
-        actions={
-          <Button variant="outlined" size="small" startIcon={<BookmarkIcon sx={{ fontSize: 14 }} />}
-            onClick={() => navigate('/mis-proyectos', { state: { success: 'Proyecto guardado como borrador.' } })}
-            disabled={loading}>
-            Guardar borrador
-          </Button>
-        }
+        subtitle="Completá la información para recibir propuestas de constructores verificados."
       />
 
       {/* Layout 3 columnas */}
       <Box sx={{ display: 'flex', gap: { xs: 0, md: 4 }, alignItems: 'flex-start' }}>
 
-        {/* ── Columna izquierda: navegación ── */}
-        <Box sx={{ width: 180, flexShrink: 0, display: { xs: 'none', md: 'block' } }}>
+        {/* ── Nav lateral — solo md+ ── */}
+        <Box sx={{ width: 176, flexShrink: 0, display: { xs: 'none', md: 'block' } }}>
           <SectionNav sections={sections} />
         </Box>
 
-        {/* ── Columna centro: formulario ── */}
+        {/* ── Formulario ── */}
         <Box sx={{ flex: 1, minWidth: 0 }}>
 
-          {/* Sección: Información general */}
-          <FormSection title="Información general" sectionRef={infoRef}>
+          {/* SECCIÓN: Proyecto */}
+          <FormSection title="Proyecto" sectionRef={proyectoRef}>
             <Grid container spacing={2.5}>
-              <Grid size={{ xs: 12 }}>
+
+              {/* Tipo + Nombre en la misma fila */}
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <TextField select fullWidth required
+                  label="Tipo de trabajo"
+                  value={form.tipoProyecto}
+                  onChange={set('tipoProyecto')}
+                  onBlur={touch('tipoProyecto')}
+                  error={!!err.tipoProyecto}
+                  helperText={err.tipoProyecto || ' '}
+                  SelectProps={{
+                    renderValue: (v) => TIPOS.find(t => t.value === v)?.label ?? '',
+                  }}>
+                  <MenuItem value="" disabled><em>Elegí una categoría</em></MenuItem>
+                  {TIPOS.map(t => (
+                    <MenuItem key={t.value} value={t.value}>
+                      <Box>
+                        <Typography fontSize={13} fontWeight={500}>{t.label}</Typography>
+                        <Typography fontSize={11.5} color="text.secondary">{t.desc}</Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 8 }}>
                 <TextField fullWidth required
                   label="Nombre del proyecto"
                   value={form.titulo}
                   onChange={set('titulo')}
-                  onBlur={() => setTouched(p => ({ ...p, titulo: true }))}
+                  onBlur={touch('titulo')}
                   error={!!err.titulo}
-                  helperText={err.titulo || `${form.titulo.length}/120 · Ej: "Remodelación de cocina — Escazú"`}
-                  inputProps={{ maxLength: 120 }} />
+                  helperText={err.titulo || `${form.titulo.length}/120`}
+                  inputProps={{ maxLength: 120 }}
+                  placeholder='Ej: "Remodelación de cocina y comedor — Escazú"' />
               </Grid>
-              <Grid size={{ xs: 12, sm: 5 }}>
-                <TextField select fullWidth required
-                  label="Tipo de proyecto"
-                  value={form.tipoProyecto}
-                  onChange={set('tipoProyecto')}
-                  onBlur={() => setTouched(p => ({ ...p, tipoProyecto: true }))}
-                  error={!!err.tipoProyecto}
-                  helperText={err.tipoProyecto || 'Categoría que mejor describe la obra'}>
-                  <MenuItem value="" disabled><em>Seleccioná una opción</em></MenuItem>
-                  {TIPOS.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
-                </TextField>
-              </Grid>
+
+              {/* Descripción — fila completa */}
               <Grid size={{ xs: 12 }}>
                 <TextField fullWidth required multiline rows={5}
-                  label="Descripción del proyecto"
+                  label="¿Qué trabajo querés realizar?"
                   value={form.descripcion}
                   onChange={set('descripcion')}
-                  onBlur={() => setTouched(p => ({ ...p, descripcion: true }))}
+                  onBlur={touch('descripcion')}
                   error={!!err.descripcion}
-                  helperText={err.descripcion
-                    || `${form.descripcion.length} caracteres · Incluí estado actual, qué querés hacer, medidas y materiales preferidos`} />
+                  helperText={err.descripcion || `${form.descripcion.length} caracteres`}
+                  placeholder={
+                    'Ej: Quiero remodelar la cocina de mi casa. El espacio actual mide unos 12 m².\n'
+                    + 'Me gustaría ampliar la isla central, cambiar los muebles superiores e inferiores,\n'
+                    + 'y actualizar toda la iluminación. Los materiales pueden ser de línea estándar.'
+                  } />
               </Grid>
             </Grid>
           </FormSection>
 
-          {/* Sección: Ubicación */}
+          {/* SECCIÓN: Ubicación */}
           <FormSection title="Ubicación" badge="Opcional" sectionRef={ubicRef}>
             <Grid container spacing={2.5}>
               <Grid size={{ xs: 12, sm: 5 }}>
@@ -433,33 +437,32 @@ export default function PublicarProyecto() {
               </Grid>
               <Grid size={{ xs: 12, sm: 7 }}>
                 <TextField fullWidth label="Cantón"
-                  value={form.canton} onChange={set('canton')}
-                  placeholder='Ej: "Escazú", "Desamparados"'
-                  helperText="Mejora los resultados de búsqueda y filtra constructores por zona" />
+                  value={form.canton}
+                  onChange={set('canton')}
+                  placeholder='Ej: "Escazú", "Desamparados", "Santa Bárbara"'
+                  helperText="Ayuda a los constructores de tu zona a encontrar tu proyecto" />
               </Grid>
             </Grid>
           </FormSection>
 
-          {/* Sección: Alcance */}
-          <FormSection title="Alcance" badge="Opcional" sectionRef={alcanceRef}>
+          {/* SECCIÓN: Detalles (área + presupuesto juntos) */}
+          <FormSection title="Detalles del proyecto" badge="Opcional" sectionRef={detallesRef}>
             <Grid container spacing={2.5}>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField fullWidth label="Área aproximada"
                   value={form.areaM2} onChange={set('areaM2')} type="number"
                   slotProps={{ input: { endAdornment: <InputAdornment position="end">m²</InputAdornment> } }}
-                  helperText="Superficie total del área de trabajo" />
+                  helperText="Metros cuadrados del área de trabajo" />
               </Grid>
-            </Grid>
-          </FormSection>
-
-          {/* Sección: Presupuesto */}
-          <FormSection title="Presupuesto" badge="Opcional" sectionRef={presuRef}>
-            <Grid container spacing={2.5}>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField fullWidth label="Presupuesto máximo"
                   value={form.presupuestoMax} onChange={set('presupuestoMax')} type="number"
                   slotProps={{ input: { startAdornment: <InputAdornment position="start">₡</InputAdornment> } }}
-                  helperText="Podés dejarlo vacío si aún no tenés un monto definido" />
+                  helperText={
+                    form.presupuestoMax
+                      ? `₡ ${parseFloat(form.presupuestoMax).toLocaleString('es-CR')} · Podés ajustarlo luego`
+                      : 'Dejalo vacío si todavía no tenés un monto definido'
+                  } />
               </Grid>
             </Grid>
           </FormSection>
@@ -473,6 +476,7 @@ export default function PublicarProyecto() {
           <Box sx={{
             display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
             gap: 1.5, pt: 2.5, borderTop: '1px solid', borderColor: 'divider',
+            flexWrap: 'wrap',
           }}>
             <Button onClick={() => navigate('/mis-proyectos')} sx={{ color: 'text.secondary' }}>
               Cancelar
@@ -483,17 +487,17 @@ export default function PublicarProyecto() {
               Guardar borrador
             </Button>
             <Button variant="contained" startIcon={<AutoAwesomeIcon sx={{ fontSize: 15 }} />}
-              onClick={handlePublicar} disabled={loading}
+              onClick={handleGenerarEstimacion} disabled={loading}
               sx={{ boxShadow: 'none' }}>
               {loading
-                ? <><CircularProgress size={14} color="inherit" sx={{ mr: 1 }} />Creando…</>
-                : 'Publicar proyecto'}
+                ? <><CircularProgress size={14} color="inherit" sx={{ mr: 1 }} />Generando estimación…</>
+                : 'Generar estimación'}
             </Button>
           </Box>
         </Box>
 
-        {/* ── Columna derecha: resumen ── */}
-        <Box sx={{ width: 240, flexShrink: 0, display: { xs: 'none', lg: 'block' } }}>
+        {/* ── Resumen — solo lg+ ── */}
+        <Box sx={{ width: 236, flexShrink: 0, display: { xs: 'none', lg: 'block' } }}>
           <SummaryPanel form={form} />
         </Box>
       </Box>
