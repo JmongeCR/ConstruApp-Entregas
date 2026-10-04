@@ -1,44 +1,51 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Box, Typography, TextField, InputAdornment, Select, MenuItem,
   FormControl, InputLabel, Button, Chip, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow,
   Skeleton, Alert, useTheme, useMediaQuery,
 } from '@mui/material';
-import SearchIcon     from '@mui/icons-material/Search';
-import VerifiedIcon   from '@mui/icons-material/Verified';
+import SearchIcon        from '@mui/icons-material/Search';
+import VerifiedIcon      from '@mui/icons-material/Verified';
+import AssignmentIcon    from '@mui/icons-material/Assignment';
 import { perfilesConstructorApi, proyectosApi } from '../../api/endpoints';
 import { useAuth } from '../../context/AuthContext';
+import PageHeader from '../../components/common/PageHeader';
 
 /* ── Constantes ─────────────────────────────────────────────────────────── */
 const PROVINCIAS = ['Todas','San José','Alajuela','Cartago','Heredia','Guanacaste','Puntarenas','Limón'];
 
+const TIPO_LABEL = {
+  Remodelacion:'Remodelación', ObraGris:'Obra gris',
+  ElectricoPlomeria:'Eléctrico / Plomería', Pintura:'Pintura',
+  Pisos:'Pisos', Techos:'Techos', PiscinaJardin:'Piscina / Jardín', Otro:'Otro',
+};
+
 const TIPOS_PROYECTO = [
   { value: '', label: 'Todos los tipos' },
-  { value: 'Remodelacion',      label: 'Remodelación' },
-  { value: 'ObraGris',          label: 'Obra gris' },
-  { value: 'ElectricoPlomeria', label: 'Eléctrico / Plomería' },
-  { value: 'Pintura',           label: 'Pintura' },
-  { value: 'Pisos',             label: 'Pisos' },
-  { value: 'Techos',            label: 'Techos' },
+  ...Object.entries(TIPO_LABEL).map(([value, label]) => ({ value, label })),
 ];
 
 const ESPECIALIDADES_BASE = [
-  '','Remodelación','Obra gris','Eléctrico','Plomería','Pintura','Pisos','Techos',
-  'Piscinas','Jardines','Demolición','Estructuras metálicas','Enchapes',
+  '','Remodelación','Obra gris','Eléctrico','Plomería','Pintura',
+  'Pisos','Techos','Piscinas','Jardines','Demolición','Estructuras metálicas','Enchapes',
 ];
 
-const TH = ({ children, hide }) => (
-  <TableCell sx={{
-    fontSize: 12, fontWeight: 600, color: 'text.secondary', py: 1.25,
+/* ── Celda de encabezado responsive ─────────────────────────────────────── */
+const TH = ({ children, hide, align }) => (
+  <TableCell align={align} sx={{
+    fontSize: 11.5, fontWeight: 600, color: 'text.secondary',
+    py: 1.25, letterSpacing: '0.03em',
     display: hide ? { xs: 'none', [hide]: 'table-cell' } : undefined,
   }}>
     {children}
   </TableCell>
 );
 
-/* ── Marketplace principal ──────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════════
+   COMPONENTE PRINCIPAL
+══════════════════════════════════════════════════════════════════════════ */
 export default function Marketplace() {
   const { usuario } = useAuth();
   const navigate    = useNavigate();
@@ -47,40 +54,57 @@ export default function Marketplace() {
 
   const esConstructor = usuario?.rol === 'Constructor';
 
-  /* Estado: Directorio (Cliente / Admin) */
-  const [constructores, setConstructores] = useState([]);
-  const [loading,  setLoading]            = useState(true);
-  const [error,    setError]              = useState('');
-  const [busqueda,      setBusqueda]      = useState('');
-  const [provincia,     setProvincia]     = useState('Todas');
-  const [especialidad,  setEspecialidad]  = useState('');
-  const [soloVerif,     setSoloVerif]     = useState(false);
+  /* ── Estado compartido ───────────────────────────────────────────────── */
+  const [constructores,  setConstructores]  = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [error,          setError]          = useState('');
 
-  /* Estado: Proyectos disponibles (Constructor) */
-  const [proyectos,       setProyectos]     = useState([]);
-  const [loadingProy,     setLoadingProy]   = useState(false);
-  const [buscarProy,      setBuscarProy]    = useState('');
-  const [tipoProy,        setTipoProy]      = useState('');
-  const [provinciaProy,   setProvinciaProy] = useState('Todas');
+  /* ── Filtros: directorio ─────────────────────────────────────────────── */
+  const [busqueda,     setBusqueda]     = useState('');
+  const [provincia,    setProvincia]    = useState('Todas');
+  const [especialidad, setEspecialidad] = useState('');
+  const [soloVerif,    setSoloVerif]    = useState(false);
 
-  /* Carga de datos */
+  /* ── Contexto de proyecto (Cliente/Admin) ────────────────────────────── */
+  const [misProyectos,    setMisProyectos]    = useState([]);
+  const [proyectoActivo,  setProyectoActivo]  = useState(null);
+
+  /* ── Estado: vista Constructor ───────────────────────────────────────── */
+  const [proyectos,     setProyectos]     = useState([]);
+  const [loadingProy,   setLoadingProy]   = useState(false);
+  const [buscarProy,    setBuscarProy]    = useState('');
+  const [tipoProy,      setTipoProy]      = useState('');
+  const [provinciaProy, setProvinciaProy] = useState('Todas');
+
+  /* ── Carga de datos ──────────────────────────────────────────────────── */
   useEffect(() => {
     if (esConstructor) {
       setLoadingProy(true);
-      proyectosApi.getAll?.()
+      proyectosApi.getPublicados()
         .then(r => setProyectos(r.data ?? []))
         .catch(() => {})
         .finally(() => setLoadingProy(false));
       return;
     }
+
+    /* Cliente / Admin */
     setLoading(true);
-    perfilesConstructorApi.getAll()
+    const cargarConstructores = perfilesConstructorApi.getAll()
       .then(r => setConstructores(r.data ?? []))
-      .catch(() => setError('No se pudo cargar el directorio.'))
-      .finally(() => setLoading(false));
+      .catch(() => setError('No se pudo cargar el directorio.'));
+
+    const cargarProyectos = proyectosApi.getMios()
+      .then(r => {
+        const activos = (r.data ?? []).filter(p => p.estado === 'Publicado');
+        setMisProyectos(activos);
+        if (activos.length > 0) setProyectoActivo(activos[0]);
+      })
+      .catch(() => {});
+
+    Promise.all([cargarConstructores, cargarProyectos]).finally(() => setLoading(false));
   }, [esConstructor]);
 
-  /* Especialidades dinámicas */
+  /* ── Especialidades dinámicas ────────────────────────────────────────── */
   const especialidades = useMemo(() => {
     const extra = constructores
       .flatMap(c => (c.especialidades || '').split(/[,;]+/).map(s => s.trim()))
@@ -88,13 +112,14 @@ export default function Marketplace() {
     return [...new Set([...ESPECIALIDADES_BASE, ...extra])];
   }, [constructores]);
 
-  /* Filtrado */
+  /* ── Filtrado ────────────────────────────────────────────────────────── */
   const filtrados = useMemo(() => {
     const q = busqueda.toLowerCase();
     return constructores.filter(c => {
       if (q && !c.nombreEmpresa?.toLowerCase().includes(q)
            && !(c.especialidades || '').toLowerCase().includes(q)
-           && !(c.canton || '').toLowerCase().includes(q)) return false;
+           && !(c.canton || '').toLowerCase().includes(q)
+           && !(c.provincia || '').toLowerCase().includes(q)) return false;
       if (provincia !== 'Todas' && c.provincia !== provincia) return false;
       if (especialidad && !(c.especialidades || '').toLowerCase().includes(especialidad.toLowerCase())) return false;
       if (soloVerif && !c.verificado) return false;
@@ -105,10 +130,18 @@ export default function Marketplace() {
   const filtrosActivos = [busqueda, provincia !== 'Todas', especialidad, soloVerif].filter(Boolean).length;
   const resetFiltros   = () => { setBusqueda(''); setProvincia('Todas'); setEspecialidad(''); setSoloVerif(false); };
 
-  /* ── Vista Constructor: proyectos disponibles ─────────────────────── */
+  /* ── Navegar al perfil con contexto de proyecto ──────────────────────── */
+  const verPerfil = (id) => navigate(`/constructor/${id}`, {
+    state: proyectoActivo
+      ? { proyectoId: proyectoActivo.id, proyectoTitulo: proyectoActivo.titulo, proyectoTipo: proyectoActivo.tipoProyecto }
+      : {},
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     VISTA CONSTRUCTOR — Proyectos disponibles
+  ═══════════════════════════════════════════════════════════════════════ */
   if (esConstructor) {
     const filtradosProy = proyectos.filter(p => {
-      if (p.estado !== 'Publicado') return false;
       if (buscarProy && !p.titulo?.toLowerCase().includes(buscarProy.toLowerCase())) return false;
       if (tipoProy && p.tipoProyecto !== tipoProy) return false;
       if (provinciaProy !== 'Todas' && p.provincia !== provinciaProy) return false;
@@ -117,16 +150,14 @@ export default function Marketplace() {
 
     return (
       <Box>
-        <Box sx={{ mb: 2.5 }}>
-          <Typography fontWeight={700} fontSize={20}>Proyectos disponibles</Typography>
-          <Typography color="text.secondary" fontSize={13.5} mt={0.25}>
-            Proyectos publicados por clientes en ConstruApp.
-          </Typography>
-        </Box>
+        <PageHeader
+          title="Proyectos disponibles"
+          subtitle={loadingProy ? '' : `${filtradosProy.length} proyecto${filtradosProy.length !== 1 ? 's' : ''} publicado${filtradosProy.length !== 1 ? 's' : ''}`}
+        />
 
         <Box sx={{
           display: 'flex', gap: 1.5, mb: 2.5, flexWrap: 'wrap', alignItems: 'center',
-          p: 2, bgcolor: '#F8FAFC', border: '1px solid', borderColor: 'divider', borderRadius: 1,
+          p: 1.75, bgcolor: '#F8FAFC', border: '1px solid', borderColor: 'divider', borderRadius: 1,
         }}>
           <TextField size="small" placeholder="Buscar proyecto..." value={buscarProy}
             onChange={e => setBuscarProy(e.target.value)}
@@ -138,7 +169,7 @@ export default function Marketplace() {
               {PROVINCIAS.map(p => <MenuItem key={p} value={p} sx={{ fontSize: 13 }}>{p}</MenuItem>)}
             </Select>
           </FormControl>
-          <FormControl size="small" sx={{ minWidth: 160 }}>
+          <FormControl size="small" sx={{ minWidth: 165 }}>
             <InputLabel>Tipo de proyecto</InputLabel>
             <Select value={tipoProy} onChange={e => setTipoProy(e.target.value)} label="Tipo de proyecto">
               {TIPOS_PROYECTO.map(t => <MenuItem key={t.value} value={t.value} sx={{ fontSize: 13 }}>{t.label}</MenuItem>)}
@@ -154,15 +185,15 @@ export default function Marketplace() {
                 <TH hide="sm">Ubicación</TH>
                 <TH hide="md">Tipo</TH>
                 <TH hide="sm">Presupuesto</TH>
-                <TableCell align="right" sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary', py: 1.25, pr: 2 }}>Acciones</TableCell>
+                <TableCell align="right" sx={{ fontSize: 11.5, fontWeight: 600, color: 'text.secondary', py: 1.25, pr: 2 }}>
+                  Acciones
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loadingProy ? (
                 [1,2,3,4,5].map(i => (
-                  <TableRow key={i}>
-                    <TableCell colSpan={5}><Skeleton height={36} /></TableCell>
-                  </TableRow>
+                  <TableRow key={i}><TableCell colSpan={5}><Skeleton height={36} /></TableCell></TableRow>
                 ))
               ) : filtradosProy.length === 0 ? (
                 <TableRow>
@@ -188,7 +219,7 @@ export default function Marketplace() {
                     {[p.canton, p.provincia].filter(Boolean).join(', ') || '—'}
                   </TableCell>
                   <TableCell sx={{ fontSize: 13, display: { xs: 'none', md: 'table-cell' } }}>
-                    {TIPOS_PROYECTO.find(t => t.value === p.tipoProyecto)?.label || p.tipoProyecto || '—'}
+                    {TIPO_LABEL[p.tipoProyecto] || p.tipoProyecto || '—'}
                   </TableCell>
                   <TableCell sx={{ fontSize: 13, display: { xs: 'none', sm: 'table-cell' } }}>
                     {p.presupuesto ? `₡${Number(p.presupuesto).toLocaleString('es-CR')}` : '—'}
@@ -197,7 +228,7 @@ export default function Marketplace() {
                     <Button size="small" variant="outlined"
                       onClick={e => { e.stopPropagation(); navigate(`/obra/${p.id}`); }}
                       sx={{ fontSize: 12, py: 0.3, px: 1.5 }}>
-                      Ver detalle
+                      Ver proyecto
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -209,18 +240,66 @@ export default function Marketplace() {
     );
   }
 
-  /* ── Vista Cliente / Admin: Directorio ──────────────────────────────── */
+  /* ═══════════════════════════════════════════════════════════════════════
+     VISTA CLIENTE / ADMIN — Centro de Contratación
+  ═══════════════════════════════════════════════════════════════════════ */
   return (
     <Box>
-      {/* Header */}
-      <Box sx={{ mb: 2.5 }}>
-        <Typography fontWeight={700} fontSize={20}>Empresas Constructoras</Typography>
-        <Typography color="text.secondary" fontSize={13.5} mt={0.25}>
-          Consulta empresas registradas en ConstruApp.
-        </Typography>
-      </Box>
+      <PageHeader
+        title="Empresas Constructoras"
+        subtitle="Consulta las empresas registradas en ConstruApp y solicita propuestas para tu proyecto."
+      />
 
-      {/* Barra de filtros */}
+      {/* ── Contexto del proyecto activo ───────────────────────────────── */}
+      {!loading && misProyectos.length > 0 && (
+        <Box sx={{
+          display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.25, mb: 2,
+          bgcolor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 1,
+        }}>
+          <AssignmentIcon sx={{ fontSize: 15, color: '#2563EB', flexShrink: 0 }} />
+          <Typography fontSize={13} color="#1E40AF" sx={{ mr: 0.5 }}>
+            Buscando para:
+          </Typography>
+          {misProyectos.length === 1 ? (
+            <Typography fontSize={13} fontWeight={600} color="#1E40AF">
+              {proyectoActivo?.titulo}
+              {proyectoActivo?.tipoProyecto && (
+                <Typography component="span" fontSize={12} color="#3B82F6" sx={{ ml: 1 }}>
+                  · {TIPO_LABEL[proyectoActivo.tipoProyecto] || proyectoActivo.tipoProyecto}
+                  {proyectoActivo.provincia && ` · ${proyectoActivo.provincia}`}
+                </Typography>
+              )}
+            </Typography>
+          ) : (
+            <Select size="small" variant="standard" disableUnderline
+              value={proyectoActivo?.id ?? ''}
+              onChange={e => setProyectoActivo(misProyectos.find(p => p.id === e.target.value))}
+              sx={{ fontSize: 13, fontWeight: 600, color: '#1E40AF', ml: -0.5 }}>
+              {misProyectos.map(p => (
+                <MenuItem key={p.id} value={p.id} sx={{ fontSize: 13 }}>
+                  {p.titulo}{p.provincia ? ` · ${p.provincia}` : ''}
+                </MenuItem>
+              ))}
+            </Select>
+          )}
+        </Box>
+      )}
+      {!loading && usuario?.rol === 'Cliente' && misProyectos.length === 0 && (
+        <Box sx={{
+          display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.25, mb: 2,
+          bgcolor: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 1,
+        }}>
+          <Typography fontSize={13} color="#92400E">
+            Para solicitar propuestas, primero{' '}
+            <Link to="/publicar" style={{ color: '#D97706', fontWeight: 600 }}>
+              publica tu proyecto
+            </Link>.
+            Podés explorar el directorio libremente.
+          </Typography>
+        </Box>
+      )}
+
+      {/* ── Barra de filtros ───────────────────────────────────────────── */}
       <Box sx={{
         display: 'flex', gap: 1.5, mb: 2, flexWrap: 'wrap', alignItems: 'center',
         p: 1.75, bgcolor: '#F8FAFC', border: '1px solid', borderColor: 'divider', borderRadius: 1,
@@ -266,7 +345,7 @@ export default function Marketplace() {
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      {/* Resultados — mobile: bloques apilados */}
+      {/* ── Resultados: mobile ─────────────────────────────────────────── */}
       {isMobile ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           {loading ? (
@@ -278,7 +357,7 @@ export default function Marketplace() {
               </Typography>
             </Box>
           ) : filtrados.map(c => (
-            <Box key={c.id} onClick={() => navigate(`/constructor/${c.id}`)}
+            <Box key={c.id} onClick={() => verPerfil(c.id)}
               sx={{ p: 1.75, border: '1px solid', borderColor: 'divider', borderRadius: 1, cursor: 'pointer',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.5,
                 '&:hover': { bgcolor: '#F8FAFC' } }}>
@@ -302,7 +381,7 @@ export default function Marketplace() {
                   <Typography fontSize={12.5} fontWeight={600}>{c.calificacionPromedio?.toFixed(1)} ★</Typography>
                 )}
                 <Button size="small" variant="outlined" sx={{ fontSize: 11, py: 0.2, px: 1, mt: 0.5 }}
-                  onClick={e => { e.stopPropagation(); navigate(`/constructor/${c.id}`); }}>
+                  onClick={e => { e.stopPropagation(); verPerfil(c.id); }}>
                   Ver perfil
                 </Button>
               </Box>
@@ -310,30 +389,31 @@ export default function Marketplace() {
           ))}
         </Box>
       ) : (
-        /* Resultados — desktop: tabla */
+        /* ── Resultados: desktop/tablet — tabla ──────────────────────── */
         <TableContainer sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                <TableCell sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary', py: 1.25, pl: 2 }}>Empresa</TableCell>
+                <TableCell sx={{ fontSize: 11.5, fontWeight: 600, color: 'text.secondary', py: 1.25, pl: 2 }}>
+                  Empresa
+                </TableCell>
                 <TH hide="md">Ubicación</TH>
-                <TH hide="lg">Especialidades</TH>
                 <TH>Estado</TH>
                 <TH hide="sm">Cal.</TH>
                 <TH hide="md">Exp.</TH>
-                <TableCell align="right" sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary', py: 1.25, pr: 2 }}>Acciones</TableCell>
+                <TableCell align="right" sx={{ fontSize: 11.5, fontWeight: 600, color: 'text.secondary', py: 1.25, pr: 2 }}>
+                  Acciones
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 [1,2,3,4,5].map(i => (
-                  <TableRow key={i}>
-                    <TableCell colSpan={7}><Skeleton height={36} /></TableCell>
-                  </TableRow>
+                  <TableRow key={i}><TableCell colSpan={6}><Skeleton height={44} /></TableCell></TableRow>
                 ))
               ) : filtrados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={6}>
                     <Box sx={{ py: 6, textAlign: 'center' }}>
                       <Typography color="text.secondary" fontSize={13.5}>
                         No se encontraron empresas con los filtros aplicados.
@@ -342,23 +422,20 @@ export default function Marketplace() {
                   </TableCell>
                 </TableRow>
               ) : filtrados.map(c => (
-                <TableRow key={c.id} hover sx={{ cursor: 'pointer' }}
-                  onClick={() => navigate(`/constructor/${c.id}`)}>
+                <TableRow key={c.id} hover sx={{ cursor: 'pointer' }} onClick={() => verPerfil(c.id)}>
                   <TableCell sx={{ py: 1.5, pl: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.2 }}>
                       <Typography fontSize={13.5} fontWeight={600}>{c.nombreEmpresa}</Typography>
                     </Box>
+                    {c.especialidades && (
+                      <Typography fontSize={11.5} color="text.secondary"
+                        sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 280 }}>
+                        {c.especialidades}
+                      </Typography>
+                    )}
                   </TableCell>
                   <TableCell sx={{ fontSize: 13, color: 'text.secondary', display: { xs: 'none', md: 'table-cell' } }}>
                     {[c.canton, c.provincia].filter(Boolean).join(', ') || '—'}
-                  </TableCell>
-                  <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
-                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                      {(c.especialidades || '').split(/[,;]+/).filter(Boolean).slice(0, 3).map((e, i) => (
-                        <Chip key={i} label={e.trim()} size="small"
-                          sx={{ fontSize: 11, height: 20, bgcolor: '#F1F5F9', color: '#475569' }} />
-                      ))}
-                    </Box>
                   </TableCell>
                   <TableCell>
                     {c.verificado ? (
@@ -383,7 +460,7 @@ export default function Marketplace() {
                   </TableCell>
                   <TableCell align="right" sx={{ pr: 2 }}>
                     <Button size="small" variant="outlined"
-                      onClick={e => { e.stopPropagation(); navigate(`/constructor/${c.id}`); }}
+                      onClick={e => { e.stopPropagation(); verPerfil(c.id); }}
                       sx={{ fontSize: 12, py: 0.3, px: 1.5, whiteSpace: 'nowrap' }}>
                       Ver perfil
                     </Button>
