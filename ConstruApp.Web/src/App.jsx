@@ -341,7 +341,7 @@ function AppRoutes() {
         <Route path="/perfiles/ferreteria"     element={<RoleGuard roles={['Proveedor','Admin']}><PerfilesFerreteria /></RoleGuard>} />
 
         {/* Compartidas */}
-        <Route path="/obra/:id"                element={<ObraDetalle />} />
+        <Route path="/obra/:proyectoId"         element={<ObraDetalle />} />
         <Route path="/proyectos"               element={<Proyectos />} />
         <Route path="/documentos"              element={<Documentos />} />
         <Route path="/campo"                   element={<CampoApp />} />
