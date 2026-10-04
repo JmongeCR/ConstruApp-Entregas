@@ -261,7 +261,7 @@ export default function MisProyectos() {
       )}
 
       {/* ── Tabla ── */}
-      <Box sx={{ bgcolor: '#fff', border: '1px solid #E5E7EB', borderRadius: 1.5, overflow: 'hidden' }}>
+      <Box sx={{ bgcolor: '#fff', border: '1px solid #E5E7EB', borderRadius: 1.5, overflowX: 'auto' }}>
         {loading ? (
           <Box sx={{ p: 2 }}>
             {[1,2,3,4,5].map(i => <Skeleton key={i} height={44} sx={{ mb: 0.5 }} />)}

@@ -14,7 +14,8 @@ export default function PageHeader({ title, subtitle, onAdd, addLabel = 'Nuevo',
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
         {actions}
         {onAdd && (
-          <Button variant="contained" startIcon={<AddIcon />} onClick={onAdd}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={onAdd}
+            sx={{ whiteSpace: 'nowrap', boxShadow: 'none' }}>
             {addLabel}
           </Button>
         )}
