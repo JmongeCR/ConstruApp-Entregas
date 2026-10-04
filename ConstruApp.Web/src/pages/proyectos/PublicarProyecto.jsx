@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, TextField, Button, Grid, Alert,
@@ -25,7 +25,6 @@ const TIPOS = [
   { value: 'Otro',              label: 'Otro',                 desc: 'Proyectos especiales o mixtos' },
 ];
 
-const PROVINCIAS = ['San José','Alajuela','Cartago','Heredia','Guanacaste','Puntarenas','Limón'];
 
 const PLAN_META = {
   economico: { accent: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0', badge: 'Económico',  desc: 'Materiales básicos, sin acabados premium' },
@@ -150,12 +149,37 @@ export default function PublicarProyecto() {
     descripcion:    '',
     tipoProyecto:   '',
     canton:         '',
-    provincia:      'San José',
+    provincia:      '',
     presupuestoMax: '',
     areaM2:         '',
   });
 
   const [touched, setTouched] = useState({});
+
+  /* Ubicaciones API */
+  const [provincias,  setProvincias]  = useState([]);
+  const [cantones,    setCantones]    = useState([]);
+  const [loadingUbic, setLoadingUbic] = useState(false);
+  const [provinciaId, setProvinciaId] = useState('');
+
+  const toOptions = (obj) => Object.entries(obj).map(([id, name]) => ({ id, name }));
+
+  useEffect(() => {
+    fetch('https://ubicaciones.paginasweb.cr/provincias.json')
+      .then(r => r.json())
+      .then(data => setProvincias(toOptions(data)))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!provinciaId) { setCantones([]); return; }
+    setLoadingUbic(true);
+    fetch(`https://ubicaciones.paginasweb.cr/provincia/${provinciaId}/cantones.json`)
+      .then(r => r.json())
+      .then(data => setCantones(toOptions(data)))
+      .catch(() => setCantones([]))
+      .finally(() => setLoadingUbic(false));
+  }, [provinciaId]);
 
   const set = (f) => (e) => {
     setTouched(p => ({ ...p, [f]: true }));
@@ -425,18 +449,44 @@ export default function PublicarProyecto() {
           <FormSection title="Ubicación" badge="Opcional" sectionRef={ubicRef}>
             <Grid container spacing={2.5}>
               <Grid size={{ xs: 12, sm: 5 }}>
-                <TextField select fullWidth label="Provincia"
-                  value={form.provincia} onChange={set('provincia')}
-                  SelectProps={{ native: true }}>
-                  {PROVINCIAS.map(p => <option key={p} value={p}>{p}</option>)}
-                </TextField>
+                <Autocomplete
+                  fullWidth
+                  options={provincias}
+                  getOptionLabel={(o) => (typeof o === 'string' ? o : o.name)}
+                  value={provincias.find(p => p.id === provinciaId) ?? null}
+                  onChange={(_, val) => {
+                    setProvinciaId(val?.id ?? '');
+                    setForm(p => ({ ...p, provincia: val?.name ?? '', canton: '' }));
+                    setCantones([]);
+                  }}
+                  isOptionEqualToValue={(o, v) => o.id === v.id}
+                  loading={provincias.length === 0}
+                  loadingText="Cargando…"
+                  noOptionsText="Sin resultados"
+                  renderInput={(params) => (
+                    <TextField {...params} label="Provincia" />
+                  )}
+                />
               </Grid>
               <Grid size={{ xs: 12, sm: 7 }}>
-                <TextField fullWidth label="Cantón"
-                  value={form.canton}
-                  onChange={set('canton')}
-                  placeholder='Ej: "Escazú", "Desamparados", "Santa Bárbara"'
-                  helperText="Ayuda a los constructores de tu zona a encontrar tu proyecto" />
+                <Autocomplete
+                  fullWidth
+                  options={cantones}
+                  getOptionLabel={(o) => (typeof o === 'string' ? o : o.name)}
+                  value={cantones.find(c => c.name === form.canton) ?? null}
+                  onChange={(_, val) => {
+                    setForm(p => ({ ...p, canton: val?.name ?? '' }));
+                  }}
+                  disabled={!provinciaId}
+                  loading={loadingUbic}
+                  loadingText="Cargando cantones…"
+                  noOptionsText="Sin resultados"
+                  isOptionEqualToValue={(o, v) => o.id === v.id}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Cantón"
+                      helperText="Ayuda a los constructores de tu zona a encontrar tu proyecto" />
+                  )}
+                />
               </Grid>
             </Grid>
           </FormSection>
