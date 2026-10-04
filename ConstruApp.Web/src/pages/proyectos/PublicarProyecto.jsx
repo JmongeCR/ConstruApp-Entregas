@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, TextField, Button, Grid, Alert,
-  CircularProgress, InputAdornment, Divider, Chip, MenuItem,
+  CircularProgress, InputAdornment, Divider, Chip, Autocomplete,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
 } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -36,7 +36,7 @@ const PLAN_META = {
 /* ── Sección del formulario ──────────────────────────────────────────────── */
 function FormSection({ title, badge, sectionRef, children }) {
   return (
-    <Box ref={sectionRef} sx={{ mb: 4, scrollMarginTop: 16 }}>
+    <Box ref={sectionRef} sx={{ mb: 3, scrollMarginTop: 16 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
         <Typography fontWeight={700} fontSize={13.5}>{title}</Typography>
         {badge && (
@@ -369,32 +369,9 @@ export default function PublicarProyecto() {
 
           {/* SECCIÓN: Proyecto */}
           <FormSection title="Proyecto" sectionRef={proyectoRef}>
-            <Grid container spacing={2.5}>
+            <Grid container spacing={2}>
 
-              {/* Tipo + Nombre en la misma fila */}
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField select fullWidth required
-                  label="Tipo de trabajo"
-                  value={form.tipoProyecto}
-                  onChange={set('tipoProyecto')}
-                  onBlur={touch('tipoProyecto')}
-                  error={!!err.tipoProyecto}
-                  helperText={err.tipoProyecto || ' '}
-                  SelectProps={{
-                    renderValue: (v) => TIPOS.find(t => t.value === v)?.label ?? '',
-                  }}>
-                  <MenuItem value="" disabled><em>Elegí una categoría</em></MenuItem>
-                  {TIPOS.map(t => (
-                    <MenuItem key={t.value} value={t.value}>
-                      <Box>
-                        <Typography fontSize={13} fontWeight={500}>{t.label}</Typography>
-                        <Typography fontSize={11.5} color="text.secondary">{t.desc}</Typography>
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-
+              {/* Nombre — campo principal, fila 1 izquierda */}
               <Grid size={{ xs: 12, sm: 8 }}>
                 <TextField fullWidth required
                   label="Nombre del proyecto"
@@ -407,20 +384,39 @@ export default function PublicarProyecto() {
                   placeholder='Ej: "Remodelación de cocina y comedor — Escazú"' />
               </Grid>
 
-              {/* Descripción — fila completa */}
+              {/* Tipo — Autocomplete compacto, fila 1 derecha */}
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <Autocomplete
+                  fullWidth
+                  options={TIPOS}
+                  getOptionLabel={(o) => (typeof o === 'string' ? o : o.label)}
+                  value={TIPOS.find(t => t.value === form.tipoProyecto) ?? null}
+                  onChange={(_, val) => {
+                    setTouched(p => ({ ...p, tipoProyecto: true }));
+                    setForm(p => ({ ...p, tipoProyecto: val?.value ?? '' }));
+                  }}
+                  onBlur={touch('tipoProyecto')}
+                  isOptionEqualToValue={(o, v) => o.value === v.value}
+                  noOptionsText="Sin resultados"
+                  renderInput={(params) => (
+                    <TextField {...params} required
+                      label="Tipo de trabajo"
+                      error={!!err.tipoProyecto}
+                      helperText={err.tipoProyecto || ' '} />
+                  )}
+                />
+              </Grid>
+
+              {/* Descripción — fila 2, ancho completo */}
               <Grid size={{ xs: 12 }}>
-                <TextField fullWidth required multiline rows={5}
+                <TextField fullWidth required multiline rows={4}
                   label="¿Qué trabajo querés realizar?"
                   value={form.descripcion}
                   onChange={set('descripcion')}
                   onBlur={touch('descripcion')}
                   error={!!err.descripcion}
                   helperText={err.descripcion || `${form.descripcion.length} caracteres`}
-                  placeholder={
-                    'Ej: Quiero remodelar la cocina de mi casa. El espacio actual mide unos 12 m².\n'
-                    + 'Me gustaría ampliar la isla central, cambiar los muebles superiores e inferiores,\n'
-                    + 'y actualizar toda la iluminación. Los materiales pueden ser de línea estándar.'
-                  } />
+                  placeholder="Ej: Remodelación de cocina de aproximadamente 25 m². Se requiere cambio de muebles, sobres de cuarzo e instalación eléctrica nueva." />
               </Grid>
             </Grid>
           </FormSection>
@@ -461,7 +457,7 @@ export default function PublicarProyecto() {
                   helperText={
                     form.presupuestoMax
                       ? `₡ ${parseFloat(form.presupuestoMax).toLocaleString('es-CR')} · Podés ajustarlo luego`
-                      : 'Dejalo vacío si todavía no tenés un monto definido'
+                      : 'Podés dejarlo vacío si aún no contás con un monto definido'
                   } />
               </Grid>
             </Grid>
