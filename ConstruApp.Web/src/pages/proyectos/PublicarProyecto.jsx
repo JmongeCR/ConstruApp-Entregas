@@ -5,11 +5,11 @@ import {
   CircularProgress, InputAdornment, Divider, Chip, Autocomplete,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
 } from '@mui/material';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import PublishIcon     from '@mui/icons-material/Publish';
-import BookmarkIcon    from '@mui/icons-material/Bookmark';
-import CheckIcon       from '@mui/icons-material/Check';
-import { proyectosApi, cotizacionIAApi } from '../../api/endpoints';
+import AddIcon from '@mui/icons-material/Add';
+import PublishIcon           from '@mui/icons-material/Publish';
+import BookmarkIcon          from '@mui/icons-material/Bookmark';
+import CheckIcon             from '@mui/icons-material/Check';
+import { proyectosApi } from '../../api/endpoints';
 import PageHeader from '../../components/common/PageHeader';
 
 const ACCENT = '#2563EB';
@@ -227,8 +227,8 @@ export default function PublicarProyecto() {
     descripcion:  touched.descripcion  && form.descripcion.trim().length < 20  ? 'Mínimo 20 caracteres.'      : '',
   };
 
-  /* Acción principal del formulario — crea proyecto + genera IA */
-  const handleGenerarEstimacion = async () => {
+  /* Acción principal del formulario — crea proyecto */
+  const handleCrearProyecto = async () => {
     setTouched({ titulo: true, tipoProyecto: true, descripcion: true });
     if (!form.tipoProyecto || !form.titulo.trim() || form.descripcion.trim().length < 20) {
       scrollTo(proyectoRef);
@@ -248,13 +248,9 @@ export default function PublicarProyecto() {
         areaM2:         form.areaM2 ? parseFloat(form.areaM2) : null,
       });
       setProyecto(data);
-      const { data: cot } = await cotizacionIAApi.generar(data.id);
-      const arr = Array.isArray(cot) ? cot : [cot];
-      arr.sort((a, b) =>
-        ({ economico: 0, estandar: 1, premium: 2 }[a.plan] -
-         { economico: 0, estandar: 1, premium: 2 }[b.plan]));
-      setPlanes(arr);
-      setStep(1);
+      navigate('/mis-proyectos', {
+        state: { success: 'El proyecto se guardó como borrador. Puedes revisarlo y publicarlo cuando esté listo.' },
+      });
     } catch {
       setError('No fue posible crear el proyecto. Revisá tu conexión e intentá de nuevo.');
     } finally {
@@ -567,12 +563,12 @@ export default function PublicarProyecto() {
               disabled={loading}>
               Guardar borrador
             </Button>
-            <Button variant="contained" startIcon={<AutoAwesomeIcon sx={{ fontSize: 15 }} />}
-              onClick={handleGenerarEstimacion} disabled={loading}
+            <Button variant="contained" startIcon={<AddIcon sx={{ fontSize: 15 }} />}
+              onClick={handleCrearProyecto} disabled={loading}
               sx={{ boxShadow: 'none' }}>
               {loading
-                ? <><CircularProgress size={14} color="inherit" sx={{ mr: 1 }} />Generando estimación…</>
-                : 'Generar estimación'}
+                ? <><CircularProgress size={14} color="inherit" sx={{ mr: 1 }} />Creando proyecto…</>
+                : 'Crear proyecto'}
             </Button>
           </Box>
         </Box>
