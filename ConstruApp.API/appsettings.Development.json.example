@@ -3,7 +3,10 @@
     "DefaultConnection": "Server=ckmecr-admin-server.database.windows.net,1433;Database=ConstruAppDB;Authentication=Active Directory Default;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
   },
   "JwtSettings": {
-    "SecretKey": "una-clave-secreta-de-al-menos-32-caracteres-segura"
+    "SecretKey": "una-clave-secreta-de-al-menos-32-caracteres-segura",
+    "Issuer": "ConstruApp",
+    "Audience": "ConstruApp.Web",
+    "ExpirationMinutes": 1440
   },
   "Email": {
     "Host": "smtp-relay.brevo.com",

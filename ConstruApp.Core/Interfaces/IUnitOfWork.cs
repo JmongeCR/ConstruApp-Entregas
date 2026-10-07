@@ -5,6 +5,8 @@ namespace ConstruApp.Core.Interfaces;
 public interface IUnitOfWork : IDisposable
 {
     IRepository<Proyecto>          Proyectos          { get; }
+    IRepository<Propiedad>         Propiedades        { get; }
+    IRepository<FotoPropiedad>     FotosPropiedad     { get; }
     IRepository<ArchivoProyecto>   Archivos           { get; }
     IRepository<CotizacionIA>      CotizacionesIA     { get; }
     IRepository<LineaCotizacionIA> LineasCotizacion   { get; }

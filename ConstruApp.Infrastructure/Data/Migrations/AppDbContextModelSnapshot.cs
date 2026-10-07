@@ -710,6 +710,37 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.ToTable("FotosAvance");
                 });
 
+            modelBuilder.Entity("ConstruApp.Core.Entities.FotoPropiedad", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("NombreArchivo")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("PropiedadId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PropiedadId");
+
+                    b.ToTable("FotosPropiedad");
+                });
+
             modelBuilder.Entity("ConstruApp.Core.Entities.GastoObra", b =>
                 {
                     b.Property<int>("Id")
@@ -1446,6 +1477,59 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.ToTable("PresupuestoPartidas");
                 });
 
+            modelBuilder.Entity("ConstruApp.Core.Entities.Propiedad", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Canton")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Caracteristicas")
+                        .HasMaxLength(1500)
+                        .HasColumnType("nvarchar(1500)");
+
+                    b.Property<int>("ClienteId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Direccion")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Distrito")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("FechaActualizacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Provincia")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClienteId");
+
+                    b.ToTable("Propiedades");
+                });
+
             modelBuilder.Entity("ConstruApp.Core.Entities.Propuesta", b =>
                 {
                     b.Property<int>("Id")
@@ -1522,6 +1606,10 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                         .HasMaxLength(3000)
                         .HasColumnType("nvarchar(3000)");
 
+                    b.Property<string>("Distrito")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("Estado")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -1538,6 +1626,9 @@ namespace ConstruApp.Infrastructure.Data.Migrations
 
                     b.Property<decimal?>("PresupuestoMax")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("PropiedadId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Provincia")
                         .HasMaxLength(100)
@@ -1558,6 +1649,8 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.HasIndex("ClienteId");
 
                     b.HasIndex("Estado");
+
+                    b.HasIndex("PropiedadId");
 
                     b.ToTable("Proyectos");
                 });
@@ -2162,6 +2255,17 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.Navigation("Avance");
                 });
 
+            modelBuilder.Entity("ConstruApp.Core.Entities.FotoPropiedad", b =>
+                {
+                    b.HasOne("ConstruApp.Core.Entities.Propiedad", "Propiedad")
+                        .WithMany("Fotos")
+                        .HasForeignKey("PropiedadId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Propiedad");
+                });
+
             modelBuilder.Entity("ConstruApp.Core.Entities.GastoObra", b =>
                 {
                     b.HasOne("ConstruApp.Core.Entities.PresupuestoPartida", "Partida")
@@ -2400,6 +2504,17 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.Navigation("Proyecto");
                 });
 
+            modelBuilder.Entity("ConstruApp.Core.Entities.Propiedad", b =>
+                {
+                    b.HasOne("ConstruApp.Core.Entities.Usuario", "Cliente")
+                        .WithMany("Propiedades")
+                        .HasForeignKey("ClienteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Cliente");
+                });
+
             modelBuilder.Entity("ConstruApp.Core.Entities.Propuesta", b =>
                 {
                     b.HasOne("ConstruApp.Core.Entities.PerfilConstructor", "Constructor")
@@ -2427,7 +2542,14 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("ConstruApp.Core.Entities.Propiedad", "Propiedad")
+                        .WithMany("Proyectos")
+                        .HasForeignKey("PropiedadId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Cliente");
+
+                    b.Navigation("Propiedad");
                 });
 
             modelBuilder.Entity("ConstruApp.Core.Entities.TareaFase", b =>
@@ -2572,6 +2694,13 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.Navigation("Gastos");
                 });
 
+            modelBuilder.Entity("ConstruApp.Core.Entities.Propiedad", b =>
+                {
+                    b.Navigation("Fotos");
+
+                    b.Navigation("Proyectos");
+                });
+
             modelBuilder.Entity("ConstruApp.Core.Entities.Propuesta", b =>
                 {
                     b.Navigation("Calificaciones");
@@ -2623,6 +2752,8 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.Navigation("PerfilProveedor");
 
                     b.Navigation("PermisosExtra");
+
+                    b.Navigation("Propiedades");
 
                     b.Navigation("Proyectos");
                 });

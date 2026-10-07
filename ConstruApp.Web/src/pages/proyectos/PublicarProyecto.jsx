@@ -9,7 +9,7 @@ import AddIcon from '@mui/icons-material/Add';
 import PublishIcon           from '@mui/icons-material/Publish';
 import BookmarkIcon          from '@mui/icons-material/Bookmark';
 import CheckIcon             from '@mui/icons-material/Check';
-import { proyectosApi } from '../../api/endpoints';
+import { proyectosApi, propiedadesApi } from '../../api/endpoints';
 import PageHeader from '../../components/common/PageHeader';
 
 const ACCENT = '#2563EB';
@@ -138,14 +138,15 @@ function SummaryPanel({ form }) {
 export default function PublicarProyecto() {
   const navigate = useNavigate();
 
-  const [step,     setStep]     = useState(0); /* 0 = form, 1 = resultado IA */
+  const [step]                  = useState(0); /* 0 = form, 1 = resultado IA */
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
   const [proyecto, setProyecto] = useState(null);
-  const [planes,   setPlanes]   = useState([]);
+  const [planes]                = useState([]);
 
   const [form, setForm] = useState({
     titulo:         '',
+    propiedadId:    null,
     descripcion:    '',
     tipoProyecto:   '',
     canton:         '',
@@ -165,6 +166,13 @@ export default function PublicarProyecto() {
   const [loadingDistritos,setLoadingDistritos]= useState(false);
   const [provinciaId,     setProvinciaId]     = useState('');
   const [cantonId,        setCantonId]        = useState('');
+  const [propiedades,     setPropiedades]     = useState([]);
+
+  useEffect(() => {
+    propiedadesApi.getMias()
+      .then(({ data }) => setPropiedades(data))
+      .catch(() => setPropiedades([]));
+  }, []);
 
   const toOptions = (obj) => Object.entries(obj).map(([id, name]) => ({ id, name }));
 
@@ -176,8 +184,7 @@ export default function PublicarProyecto() {
   }, []);
 
   useEffect(() => {
-    if (!provinciaId) { setCantones([]); setDistritos([]); return; }
-    setLoadingCantones(true);
+    if (!provinciaId) return;
     fetch(`https://ubicaciones.paginasweb.cr/provincia/${provinciaId}/cantones.json`)
       .then(r => r.json())
       .then(data => setCantones(toOptions(data)))
@@ -186,8 +193,7 @@ export default function PublicarProyecto() {
   }, [provinciaId]);
 
   useEffect(() => {
-    if (!provinciaId || !cantonId) { setDistritos([]); return; }
-    setLoadingDistritos(true);
+    if (!provinciaId || !cantonId) return;
     fetch(`https://ubicaciones.paginasweb.cr/provincia/${provinciaId}/canton/${cantonId}/distritos.json`)
       .then(r => r.json())
       .then(data => setDistritos(toOptions(data)))
@@ -239,6 +245,7 @@ export default function PublicarProyecto() {
     try {
       const { data } = await proyectosApi.create({
         titulo:         form.titulo,
+        propiedadId:    form.propiedadId,
         descripcion:    form.descripcion,
         tipoProyecto:   form.tipoProyecto,
         canton:         form.canton    || null,
@@ -459,6 +466,48 @@ export default function PublicarProyecto() {
           {/* SECCIÓN: Ubicación */}
           <FormSection title="Ubicación" badge="Opcional" sectionRef={ubicRef}>
             <Grid container spacing={2.5}>
+              <Grid size={{ xs: 12 }}>
+                <Autocomplete
+                  fullWidth
+                  options={propiedades}
+                  getOptionLabel={(o) => o.nombre ?? ''}
+                  value={propiedades.find(p => p.id === form.propiedadId) ?? null}
+                  onChange={(_, val) => {
+                    setProvinciaId('');
+                    setCantonId('');
+                    setCantones([]);
+                    setDistritos([]);
+                    setLoadingCantones(false);
+                    setLoadingDistritos(false);
+                    setForm(p => ({
+                      ...p,
+                      propiedadId: val?.id ?? null,
+                      provincia: val?.provincia ?? '',
+                      canton: val?.canton ?? '',
+                      distrito: val?.distrito ?? '',
+                    }));
+                  }}
+                  isOptionEqualToValue={(o, v) => o.id === v.id}
+                  noOptionsText="No tenés propiedades registradas"
+                  renderInput={(params) => (
+                    <TextField {...params} label="Usar una propiedad guardada"
+                      helperText="La ubicación se completará automáticamente" />
+                  )}
+                />
+              </Grid>
+              {form.propiedadId && (
+                <Grid size={{ xs: 12 }}>
+                  <Alert severity="info">
+                    {(() => {
+                      const seleccionada = propiedades.find(p => p.id === form.propiedadId);
+                      return seleccionada
+                        ? `${seleccionada.direccion} · ${seleccionada.distrito}, ${seleccionada.canton}, ${seleccionada.provincia}`
+                        : 'Ubicación cargada desde la propiedad seleccionada.';
+                    })()}
+                  </Alert>
+                </Grid>
+              )}
+              {!form.propiedadId && <>
               <Grid size={{ xs: 12, sm: 4 }}>
                 <Autocomplete
                   fullWidth
@@ -468,6 +517,10 @@ export default function PublicarProyecto() {
                   onChange={(_, val) => {
                     setProvinciaId(val?.id ?? '');
                     setCantonId('');
+                    setCantones([]);
+                    setDistritos([]);
+                    setLoadingCantones(!!val);
+                    setLoadingDistritos(false);
                     setForm(p => ({ ...p, provincia: val?.name ?? '', canton: '', distrito: '' }));
                   }}
                   isOptionEqualToValue={(o, v) => o.id === v.id}
@@ -487,6 +540,8 @@ export default function PublicarProyecto() {
                   value={cantones.find(c => c.id === cantonId) ?? null}
                   onChange={(_, val) => {
                     setCantonId(val?.id ?? '');
+                    setDistritos([]);
+                    setLoadingDistritos(!!val);
                     setForm(p => ({ ...p, canton: val?.name ?? '', distrito: '' }));
                   }}
                   disabled={!provinciaId}
@@ -519,6 +574,7 @@ export default function PublicarProyecto() {
                   )}
                 />
               </Grid>
+              </>}
             </Grid>
           </FormSection>
 

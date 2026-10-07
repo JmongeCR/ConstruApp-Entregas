@@ -24,12 +24,14 @@ import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined
 import HandymanOutlinedIcon     from '@mui/icons-material/HandymanOutlined';
 import HomeRepairServiceOutlinedIcon from '@mui/icons-material/HomeRepairServiceOutlined';
 import PeopleOutlinedIcon       from '@mui/icons-material/PeopleOutlined';
+import HomeWorkOutlinedIcon     from '@mui/icons-material/HomeWorkOutlined';
 
 // ── Lazy imports ──────────────────────────────────────────────────────────────
 const Dashboard          = lazy(() => import('./pages/dashboard/Dashboard'));
 const MiPerfil           = lazy(() => import('./pages/perfil/MiPerfil'));
 const PublicarProyecto   = lazy(() => import('./pages/proyectos/PublicarProyecto'));
 const MisProyectos       = lazy(() => import('./pages/proyectos/MisProyectos'));
+const Propiedades        = lazy(() => import('./pages/propiedades/Propiedades'));
 const Proyectos          = lazy(() => import('./pages/proyectos/Proyectos'));
 const Trabajadores       = lazy(() => import('./pages/trabajadores/Trabajadores'));
 const ProveedoresFavoritos = lazy(() => import('./pages/favoritos/ProveedoresFavoritos'));
@@ -77,6 +79,7 @@ const NAV_LINKS = [
   { label: 'Dashboard',        path: '/',                      Icon: DashboardIcon,             roles: ['Admin','Cliente','Constructor','Proveedor'] },
   { label: 'Panel admin',      path: '/admin',                 Icon: AdminPanelSettingsIcon,     roles: ['Admin'] },
   { label: 'Mis proyectos',    path: '/mis-proyectos',         Icon: FolderOpenOutlinedIcon,     roles: ['Cliente'] },
+  { label: 'Mis propiedades',  path: '/propiedades',           Icon: HomeWorkOutlinedIcon,       roles: ['Cliente'] },
   { label: 'Constructores',    path: '/marketplace',           Icon: StoreOutlinedIcon,          roles: ['Cliente'] },
   { label: 'Cotizaciones IA',  path: '/cotizaciones-ia',       Icon: AutoAwesomeOutlinedIcon,    roles: ['Cliente'] },
   { label: 'Cronograma',       path: '/cronograma',            Icon: TimelineOutlinedIcon,       roles: ['Cliente'] },
@@ -319,6 +322,7 @@ function AppRoutes() {
 
         {/* Cliente */}
         <Route path="/mis-proyectos"           element={<RoleGuard roles={['Cliente','Admin']}><MisProyectos /></RoleGuard>} />
+        <Route path="/propiedades"             element={<RoleGuard roles={['Cliente','Admin']}><Propiedades /></RoleGuard>} />
         <Route path="/publicar"                element={<RoleGuard roles={['Cliente','Admin']}><PublicarProyecto /></RoleGuard>} />
         <Route path="/marketplace"             element={<RoleGuard roles={['Cliente','Admin','Constructor']}><Marketplace /></RoleGuard>} />
         <Route path="/cotizaciones-ia"         element={<RoleGuard roles={['Cliente','Admin']}><CotizacionesIA /></RoleGuard>} />

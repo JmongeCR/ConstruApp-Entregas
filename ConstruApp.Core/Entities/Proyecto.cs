@@ -6,6 +6,7 @@ public class Proyecto
 {
     public int    Id          { get; set; }
     public int    ClienteId   { get; set; }
+    public int?   PropiedadId { get; set; }
     public string Titulo      { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
 
@@ -15,6 +16,7 @@ public class Proyecto
     // Ubicación
     public string? Canton   { get; set; }
     public string? Provincia { get; set; }
+    public string? Distrito { get; set; }
 
     // Presupuesto y área (opcionales — el cliente los informa)
     public decimal? PresupuestoMax { get; set; }
@@ -26,6 +28,7 @@ public class Proyecto
 
     // Navegación
     public Usuario                          Cliente              { get; set; } = null!;
+    public Propiedad?                       Propiedad            { get; set; }
     public ICollection<ArchivoProyecto>     Archivos             { get; set; } = [];
     public ICollection<CotizacionIA>         CotizacionesIA       { get; set; } = [];
     public ICollection<Propuesta>           Propuestas           { get; set; } = [];
