@@ -22,6 +22,8 @@ export const usuariosApi = {
 // ── Proyectos ─────────────────────────────────────────────────────────────────
 export const proyectosApi = {
   getMios:       ()            => api.get('/proyectos'),
+  getHistorial:  ()            => api.get('/proyectos/historial'),
+  getHistorialDetalle: (id)    => api.get(`/proyectos/historial/${id}`),
   getPublicados: (params)      => api.get('/proyectos/publicados', { params }),
   getById:       (id)          => api.get(`/proyectos/${id}`),
   create:        (data)        => api.post('/proyectos', data),
