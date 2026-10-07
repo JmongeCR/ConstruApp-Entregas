@@ -20,6 +20,7 @@ public class Usuario : IdentityUser<int>
     public PerfilConstructor? PerfilConstructor { get; set; }
     public PerfilProveedor?   PerfilProveedor   { get; set; }
     public ICollection<Proyecto>     Proyectos             { get; set; } = [];
+    public ICollection<Propiedad>    Propiedades           { get; set; } = [];
     public ICollection<Calificacion> CalificacionesEmitidas  { get; set; } = [];
     public ICollection<Calificacion> CalificacionesRecibidas { get; set; } = [];
     public ICollection<UsuarioPermiso> PermisosExtra        { get; set; } = [];

@@ -47,6 +47,8 @@ builder.Services.AddIdentity<Usuario, IdentityRole<int>>(options =>
 // ── JWT ────────────────────────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey   = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!);
+var jwtIssuer   = jwtSettings["Issuer"] ?? "ConstruApp";
+var jwtAudience = jwtSettings["Audience"] ?? "ConstruApp.Web";
 
 builder.Services.AddAuthentication(options =>
 {
@@ -61,8 +63,8 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience         = true,
         ValidateLifetime         = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer              = jwtSettings["Issuer"],
-        ValidAudience            = jwtSettings["Audience"],
+        ValidIssuer              = jwtIssuer,
+        ValidAudience            = jwtAudience,
         IssuerSigningKey         = new SymmetricSecurityKey(secretKey),
         ClockSkew                = TimeSpan.Zero
     };
@@ -137,7 +139,11 @@ builder.Services.AddSwaggerGen(c =>
 // ── CORS ───────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
-    var devOrigins  = new[] { "http://localhost:5173", "https://localhost:5173", "http://localhost:5174", "https://localhost:5174" };
+    var devOrigins  = new[] {
+        "http://localhost:5173", "https://localhost:5173",
+        "http://localhost:5174", "https://localhost:5174",
+        "http://localhost:5175", "https://localhost:5175",
+    };
     var prodOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];
 
     options.AddPolicy("AppPolicy", policy =>
