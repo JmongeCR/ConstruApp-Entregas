@@ -33,6 +33,19 @@ export const proyectosApi = {
   subirFoto:     (id, data)    => api.post(`/proyectos/${id}/fotos`, data),
 };
 
+// ── Propiedades del cliente ──────────────────────────────────────────────────
+export const propiedadesApi = {
+  getMias:       ()              => api.get('/propiedades'),
+  getById:       (id)            => api.get(`/propiedades/${id}`),
+  create:        (data)          => api.post('/propiedades', data),
+  update:        (id, data)      => api.put(`/propiedades/${id}`, data),
+  delete:        (id)            => api.delete(`/propiedades/${id}`),
+  subirFoto:     (id, formData)  => api.post(`/propiedades/${id}/fotos`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  eliminarFoto:  (id, fotoId)    => api.delete(`/propiedades/${id}/fotos/${fotoId}`),
+};
+
 // ── Cotización IA (Gemini 2.5 Flash) ─────────────────────────────────────────
 export const cotizacionIAApi = {
   // Historial global

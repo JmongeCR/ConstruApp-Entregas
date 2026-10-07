@@ -81,15 +81,21 @@ public class ProyectosController : ControllerBase
         if (!Enum.TryParse<TipoProyecto>(req.TipoProyecto, out var tipo))
             return BadRequest(new { message = "Tipo de proyecto inválido." });
 
+        var propiedad = await GetPropiedadDelCliente(req.PropiedadId, userId);
+        if (req.PropiedadId.HasValue && propiedad is null)
+            return BadRequest(new { message = "La propiedad seleccionada no existe o no pertenece al cliente." });
+
         var proyecto = new Proyecto
         {
             ClienteId        = userId,
+            PropiedadId      = propiedad?.Id,
             Titulo           = req.Titulo,
             Descripcion      = req.Descripcion,
             TipoProyecto     = tipo,
             Estado           = EstadoProyecto.Borrador,
-            Canton           = req.Canton,
-            Provincia        = req.Provincia,
+            Canton           = propiedad?.Canton ?? req.Canton,
+            Provincia        = propiedad?.Provincia ?? req.Provincia,
+            Distrito         = propiedad?.Distrito ?? req.Distrito,
             PresupuestoMax   = req.PresupuestoMax,
             AreaM2           = req.AreaM2,
             FechaPublicacion = DateTime.UtcNow,
@@ -115,11 +121,17 @@ public class ProyectosController : ControllerBase
         if (!Enum.TryParse<TipoProyecto>(req.TipoProyecto, out var tipo))
             return BadRequest(new { message = "Tipo de proyecto inválido." });
 
+        var propiedad = await GetPropiedadDelCliente(req.PropiedadId, userId);
+        if (req.PropiedadId.HasValue && propiedad is null)
+            return BadRequest(new { message = "La propiedad seleccionada no existe o no pertenece al cliente." });
+
         proyecto.Titulo        = req.Titulo;
         proyecto.Descripcion   = req.Descripcion;
         proyecto.TipoProyecto  = tipo;
-        proyecto.Canton        = req.Canton;
-        proyecto.Provincia     = req.Provincia;
+        proyecto.PropiedadId   = propiedad?.Id;
+        proyecto.Canton        = propiedad?.Canton ?? req.Canton;
+        proyecto.Provincia     = propiedad?.Provincia ?? req.Provincia;
+        proyecto.Distrito      = propiedad?.Distrito ?? req.Distrito;
         proyecto.PresupuestoMax = req.PresupuestoMax;
         proyecto.AreaM2        = req.AreaM2;
         proyecto.FechaInicio   = req.FechaInicio;
@@ -209,18 +221,27 @@ public class ProyectosController : ControllerBase
     {
         p.Id,
         p.ClienteId,
+        p.PropiedadId,
         p.Titulo,
         p.Descripcion,
         TipoProyecto   = p.TipoProyecto.ToString(),
         Estado         = p.Estado.ToString(),
         p.Canton,
         p.Provincia,
+        p.Distrito,
         p.PresupuestoMax,
         p.AreaM2,
         p.FechaPublicacion,
         p.FechaInicio,
         p.FechaFin,
     };
+
+    private async Task<Propiedad?> GetPropiedadDelCliente(int? propiedadId, int clienteId)
+    {
+        if (!propiedadId.HasValue) return null;
+        var propiedad = await _uow.Propiedades.GetByIdAsync(propiedadId.Value);
+        return propiedad?.ClienteId == clienteId ? propiedad : null;
+    }
 }
 
 public record ProyectoRequest(
@@ -229,10 +250,12 @@ public record ProyectoRequest(
     string    TipoProyecto,
     string?   Canton,
     string?   Provincia,
+    string?   Distrito,
     decimal?  PresupuestoMax,
     decimal?  AreaM2,
     DateTime? FechaInicio,
-    DateTime? FechaFin
+    DateTime? FechaFin,
+    int?      PropiedadId
 );
 
 public record CambiarEstadoRequest(string Estado);
