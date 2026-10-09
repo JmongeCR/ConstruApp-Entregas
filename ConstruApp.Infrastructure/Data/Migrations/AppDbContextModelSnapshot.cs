@@ -1335,6 +1335,32 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.ToTable("PerfilesProveedor");
                 });
 
+            modelBuilder.Entity("ConstruApp.Core.Entities.PortafolioImagen", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PortafolioItemId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PortafolioItemId");
+
+                    b.ToTable("PortafolioImagenes");
+                });
+
             modelBuilder.Entity("ConstruApp.Core.Entities.PortafolioItem", b =>
                 {
                     b.Property<int>("Id")
@@ -2359,6 +2385,17 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("ConstruApp.Core.Entities.PortafolioImagen", b =>
+                {
+                    b.HasOne("ConstruApp.Core.Entities.PortafolioItem", "PortafolioItem")
+                        .WithMany("Imagenes")
+                        .HasForeignKey("PortafolioItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PortafolioItem");
+                });
+
             modelBuilder.Entity("ConstruApp.Core.Entities.PortafolioItem", b =>
                 {
                     b.HasOne("ConstruApp.Core.Entities.PerfilConstructor", "Constructor")
@@ -2565,6 +2602,11 @@ namespace ConstruApp.Infrastructure.Data.Migrations
             modelBuilder.Entity("ConstruApp.Core.Entities.PerfilProveedor", b =>
                 {
                     b.Navigation("Precios");
+                });
+
+            modelBuilder.Entity("ConstruApp.Core.Entities.PortafolioItem", b =>
+                {
+                    b.Navigation("Imagenes");
                 });
 
             modelBuilder.Entity("ConstruApp.Core.Entities.PresupuestoPartida", b =>

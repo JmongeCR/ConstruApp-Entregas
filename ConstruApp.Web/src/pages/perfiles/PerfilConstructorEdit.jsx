@@ -7,8 +7,12 @@ import SaveIcon     from '@mui/icons-material/Save';
 import BusinessIcon from '@mui/icons-material/Business';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import PendingIcon  from '@mui/icons-material/HourglassEmpty';
+import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { perfilesConstructorApi } from '../../api/endpoints';
 import LoadingScreen from '../../components/common/LoadingScreen';
+
+const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') ?? 'http://localhost:5115';
+const assetUrl = (url) => url?.startsWith('/') ? `${API_BASE}${url}` : url;
 
 const EMPTY = {
   nombreEmpresa: '', bio: '', especialidades: '', zonasCobertura: '',
@@ -21,7 +25,9 @@ export default function PerfilConstructorEdit() {
   const [form, setForm]         = useState(EMPTY);
   const [loading, setLoading]   = useState(true);
   const [saving, setSaving]     = useState(false);
+  const [savingPortfolio, setSavingPortfolio] = useState(false);
   const [errors, setErrors]     = useState({});
+  const [portfolio, setPortfolio] = useState({ titulo: '', descripcion: '', imagenes: [] });
   const [toast, setToast]       = useState({ open: false, msg: '', severity: 'success' });
 
   const notify = (msg, severity = 'success') => setToast({ open: true, msg, severity });
@@ -74,6 +80,43 @@ export default function PerfilConstructorEdit() {
       notify(msg, 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePortfolioImages = (event) => {
+    const files = Array.from(event.target.files ?? []);
+    setPortfolio(current => ({ ...current, imagenes: files.slice(0, 8) }));
+    event.target.value = '';
+  };
+
+  const handlePortfolioSubmit = async () => {
+    if (!portfolio.titulo.trim()) {
+      notify('Ingresá el título del proyecto.', 'error');
+      return;
+    }
+    if (portfolio.imagenes.length === 0) {
+      notify('Adjuntá al menos una fotografía.', 'error');
+      return;
+    }
+
+    const data = new FormData();
+    data.append('Titulo', portfolio.titulo.trim());
+    data.append('Descripcion', portfolio.descripcion.trim());
+    portfolio.imagenes.forEach(image => data.append('Imagenes', image));
+
+    setSavingPortfolio(true);
+    try {
+      const response = await perfilesConstructorApi.addPortafolio(perfil.id, data);
+      setPerfil(current => ({
+        ...current,
+        portafolioItems: [response.data, ...(current.portafolioItems ?? [])],
+      }));
+      setPortfolio({ titulo: '', descripcion: '', imagenes: [] });
+      notify('Proyecto publicado en tu portafolio.');
+    } catch (err) {
+      notify(err.response?.data?.message || 'No fue posible publicar el proyecto.', 'error');
+    } finally {
+      setSavingPortfolio(false);
     }
   };
 
@@ -192,6 +235,88 @@ export default function PerfilConstructorEdit() {
                 onChange={set('instagram')} placeholder="@usuario" />
             </Grid>
           </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Portafolio */}
+      <Card variant="outlined" sx={{ mb: 3 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="subtitle2" fontWeight={700} color="text.secondary"
+            sx={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 11, mb: 0.75 }}>
+            Portafolio de trabajos
+          </Typography>
+          <Typography color="text.secondary" fontSize={13} mb={2.5}>
+            Publicá fotografías y detalles de proyectos terminados para que los clientes conozcan tu experiencia.
+          </Typography>
+
+          {!perfil?.id ? (
+            <Alert severity="info">Primero registrá la empresa para poder publicar trabajos.</Alert>
+          ) : (
+            <>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <TextField fullWidth label="Título del proyecto *" value={portfolio.titulo}
+                    inputProps={{ maxLength: 200 }}
+                    onChange={event => setPortfolio(current => ({ ...current, titulo: event.target.value }))}
+                    placeholder="Ej: Remodelación integral de cocina" />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField fullWidth multiline rows={3} label="Descripción"
+                    value={portfolio.descripcion} inputProps={{ maxLength: 1000 }}
+                    onChange={event => setPortfolio(current => ({ ...current, descripcion: event.target.value }))}
+                    placeholder="Contá el alcance, los materiales utilizados y el resultado obtenido." />
+                </Grid>
+                <Grid item xs={12}>
+                  <Button component="label" variant="outlined" startIcon={<AddPhotoAlternateIcon />}>
+                    Seleccionar fotografías
+                    <input hidden multiple type="file" accept="image/jpeg,image/png,image/webp"
+                      onChange={handlePortfolioImages} />
+                  </Button>
+                  <Typography display="block" color="text.secondary" fontSize={11.5} mt={0.75}>
+                    De 1 a 8 imágenes JPG, PNG o WebP; máximo 5 MB por archivo.
+                  </Typography>
+                  {portfolio.imagenes.length > 0 && (
+                    <Stack direction="row" gap={0.75} flexWrap="wrap" mt={1.5}>
+                      {portfolio.imagenes.map(image => (
+                        <Chip key={`${image.name}-${image.lastModified}`} label={image.name} size="small" />
+                      ))}
+                    </Stack>
+                  )}
+                </Grid>
+              </Grid>
+
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2.5 }}>
+                <Button variant="contained" startIcon={<AddPhotoAlternateIcon />}
+                  onClick={handlePortfolioSubmit} disabled={savingPortfolio}>
+                  {savingPortfolio ? 'Publicando…' : 'Publicar proyecto'}
+                </Button>
+              </Box>
+
+              {perfil.portafolioItems?.length > 0 && (
+                <Box sx={{ mt: 3 }}>
+                  <Divider sx={{ mb: 2 }} />
+                  <Typography fontSize={13} fontWeight={700} mb={1.5}>Trabajos publicados</Typography>
+                  <Grid container spacing={1.5}>
+                    {perfil.portafolioItems.map(item => (
+                      <Grid item xs={12} sm={6} key={item.id}>
+                        <Box sx={{ display: 'flex', gap: 1.25, p: 1.25, border: '1px solid',
+                          borderColor: 'divider', borderRadius: 1 }}>
+                          <Box component="img" src={assetUrl(item.imagenUrl)} alt=""
+                            sx={{ width: 72, height: 58, objectFit: 'cover', borderRadius: 0.75, flexShrink: 0 }} />
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography fontSize={13} fontWeight={700} noWrap>{item.titulo}</Typography>
+                            <Typography fontSize={11.5} color="text.secondary">
+                              {item.imagenUrls?.length ?? 1} fotografía{(item.imagenUrls?.length ?? 1) === 1 ? '' : 's'}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
 

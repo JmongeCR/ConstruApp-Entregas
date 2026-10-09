@@ -78,7 +78,9 @@ export const perfilesConstructorApi = {
   getMio:       ()          => api.get('/perfiles/constructor/mio'),
   create:       (data)      => api.post('/perfiles/constructor', data),
   update:       (id, data)  => api.put(`/perfiles/constructor/${id}`, data),
-  addPortafolio:(id, data)  => api.post(`/perfiles/constructor/${id}/portafolio`, data),
+  addPortafolio:(id, data)  => api.post(`/perfiles/constructor/${id}/portafolio`, data, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
   getFinanciero: ()         => api.get('/perfiles/constructor/financiero'),
   updateFinanciero: (data)  => api.put('/perfiles/constructor/financiero', data),
 };
