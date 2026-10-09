@@ -49,6 +49,7 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
     public DbSet<Invitacion>              Invitaciones           => Set<Invitacion>();
     // ── Favoritos ─────────────────────────────────────────────────────────────
     public DbSet<FavoritoProveedor>       FavoritosProveedor     => Set<FavoritoProveedor>();
+    public DbSet<FavoritoConstructor>     FavoritosConstructor   => Set<FavoritoConstructor>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -737,6 +738,24 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
 
             // Un usuario no puede guardar el mismo proveedor dos veces
             e.HasIndex(f => new { f.UsuarioId, f.PerfilProveedorId }).IsUnique();
+        });
+
+        // ── FavoritoConstructor ──────────────────────────────────────────────────
+        builder.Entity<FavoritoConstructor>(e =>
+        {
+            e.HasKey(f => f.Id);
+
+            e.HasOne(f => f.Cliente)
+             .WithMany()
+             .HasForeignKey(f => f.ClienteId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(f => f.PerfilConstructor)
+             .WithMany()
+             .HasForeignKey(f => f.PerfilConstructorId)
+             .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(f => new { f.ClienteId, f.PerfilConstructorId }).IsUnique();
         });
 
         // ── Proyecto — índice de rendimiento ─────────────────────────────────────

@@ -16,7 +16,9 @@ import InstagramIcon  from '@mui/icons-material/Instagram';
 import CheckIcon      from '@mui/icons-material/Check';
 import BusinessIcon   from '@mui/icons-material/Business';
 import AssignmentIcon from '@mui/icons-material/Assignment';
-import { perfilesConstructorApi } from '../../api/endpoints';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
+import { favoritosApi, perfilesConstructorApi } from '../../api/endpoints';
 import { useAuth } from '../../context/AuthContext';
 
 const AVATAR_PALETTE = ['#4F46E5','#0EA5E9','#10B981','#2563EB','#8B5CF6','#EC4899','#EF4444'];
@@ -120,6 +122,8 @@ export default function PerfilConstructorPublico() {
   const [perfil,  setPerfil]  = useState(null);
   const [loading, setLoading] = useState(true);
   const [modal,   setModal]   = useState(false);
+  const [favorito, setFavorito] = useState(false);
+  const [favoritoError, setFavoritoError] = useState('');
 
   useEffect(() => {
     perfilesConstructorApi.getById(id)
@@ -127,6 +131,24 @@ export default function PerfilConstructorPublico() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (!esCliente) return;
+    favoritosApi.getConstructoras()
+      .then(({ data }) => setFavorito((data ?? []).some(item => item.perfilConstructorId === Number(id))))
+      .catch(() => {});
+  }, [esCliente, id]);
+
+  const toggleFavorito = async () => {
+    setFavoritoError('');
+    try {
+      if (favorito) await favoritosApi.quitarConstructora(id);
+      else await favoritosApi.agregarConstructora(id);
+      setFavorito(value => !value);
+    } catch (e) {
+      setFavoritoError(e.response?.data?.message || 'No fue posible actualizar tus favoritos.');
+    }
+  };
 
   /* ── Loading ───────────────────────────────────────────────────────── */
   if (loading) return (
@@ -185,6 +207,8 @@ export default function PerfilConstructorPublico() {
           </Typography>
         </Box>
       )}
+
+      {favoritoError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setFavoritoError('')}>{favoritoError}</Alert>}
 
       {/* ── Header ────────────────────────────────────────────────────── */}
       <Box sx={{
@@ -253,12 +277,19 @@ export default function PerfilConstructorPublico() {
             </Box>
           </Box>
 
-          {/* CTA — única acción principal */}
+          {/* Acciones del cliente */}
           {esCliente && (
-            <Button variant="contained" size="small" onClick={() => setModal(true)}
-              sx={{ flexShrink: 0, fontWeight: 600, boxShadow: 'none', alignSelf: { xs: 'flex-start', sm: 'center' } }}>
-              Solicitar propuesta
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignSelf: { xs: 'flex-start', sm: 'center' } }}>
+              <Button variant="outlined" size="small" onClick={toggleFavorito}
+                startIcon={favorito ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+                sx={{ flexShrink: 0, fontWeight: 600, color: favorito ? '#BE123C' : undefined, borderColor: favorito ? '#FECDD3' : undefined }}>
+                {favorito ? 'Guardada' : 'Guardar'}
+              </Button>
+              <Button variant="contained" size="small" onClick={() => setModal(true)}
+                sx={{ flexShrink: 0, fontWeight: 600, boxShadow: 'none' }}>
+                Solicitar propuesta
+              </Button>
+            </Box>
           )}
         </Box>
       </Box>

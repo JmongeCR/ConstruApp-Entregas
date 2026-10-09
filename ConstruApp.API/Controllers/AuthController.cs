@@ -278,8 +278,8 @@ public class AuthController : ControllerBase
         {
             Subject            = new ClaimsIdentity(claims),
             Expires            = expiration,
-            Issuer             = jwtSettings["Issuer"],
-            Audience           = jwtSettings["Audience"],
+            Issuer             = jwtSettings["Issuer"]   ?? "ConstruApp.API",
+            Audience           = jwtSettings["Audience"] ?? "ConstruApp.Web",
             SigningCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
         };

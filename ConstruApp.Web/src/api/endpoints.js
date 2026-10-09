@@ -327,6 +327,9 @@ export const favoritosApi = {
   getProveedores:   ()   => api.get('/favoritos/proveedores'),
   agregarProveedor: (id) => api.post(`/favoritos/proveedores/${id}`),
   quitarProveedor:  (id) => api.delete(`/favoritos/proveedores/${id}`),
+  getConstructoras:       ()   => api.get('/favoritos/constructores'),
+  agregarConstructora:    (id) => api.post(`/favoritos/constructores/${id}`),
+  quitarConstructora:     (id) => api.delete(`/favoritos/constructores/${id}`),
 };
 
 // ── Email ─────────────────────────────────────────────────────────────────────
