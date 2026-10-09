@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import AddIcon           from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import EditOutlinedIcon   from '@mui/icons-material/EditOutlined';
 import AutoAwesomeIcon   from '@mui/icons-material/AutoAwesome';
 import PublishIcon       from '@mui/icons-material/Publish';
 import SendIcon          from '@mui/icons-material/Send';
@@ -60,7 +61,9 @@ export default function MisProyectos() {
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroTipo,   setFiltroTipo]   = useState('');
   const [sortBy, setSortBy]         = useState('fecha_desc');
-  const [toast, setToast]           = useState({ open: false, msg: '', severity: 'success' });
+  const [toast, setToast]           = useState(() => location.state?.success
+    ? { open: true, msg: location.state.success, severity: 'success' }
+    : { open: false, msg: '', severity: 'success' });
   const [confirmDel, setConfirmDel] = useState({ open: false, id: null });
 
   const notify = (msg, severity = 'success') => setToast({ open: true, msg, severity });
@@ -71,7 +74,6 @@ export default function MisProyectos() {
       navigate('/mis-clientes', { replace: true });
       return;
     }
-    if (location.state?.success) notify(location.state.success);
     proyectosApi.getMios().then(r => setProyectos(r.data)).catch(() => {}).finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario?.rol]);
@@ -355,6 +357,14 @@ export default function MisProyectos() {
                               <SendIcon sx={{ fontSize: 16 }} />
                             </IconButton>
                           </Tooltip>
+                          {p.estado === 'Borrador' && (
+                            <Tooltip title="Editar información">
+                              <IconButton size="small" onClick={() => navigate(`/publicar/${p.id}`)}
+                                sx={{ color: '#6B7280', '&:hover': { color: '#2563EB', bgcolor: '#EFF6FF' } }}>
+                                <EditOutlinedIcon sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Tooltip>
+                          )}
                           {p.estado === 'Borrador' && (
                             <Tooltip title="Publicar">
                               <IconButton size="small" onClick={() => handlePublicar(p.id)}
