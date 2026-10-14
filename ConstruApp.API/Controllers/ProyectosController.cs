@@ -264,6 +264,12 @@ public class ProyectosController : ControllerBase
         if (!req.PropiedadId.HasValue)
             errores["propiedadId"] = "Seleccioná la propiedad donde se realizará el proyecto.";
 
+        if (req.AreaM2.HasValue && req.AreaM2.Value <= 0)
+            errores["areaM2"] = "El área debe ser mayor que cero.";
+
+        if (req.PresupuestoMax.HasValue && req.PresupuestoMax.Value <= 0)
+            errores["presupuestoMax"] = "El presupuesto debe ser mayor que cero.";
+
         return errores.Count == 0
             ? null
             : BadRequest(new { message = "Completá la información obligatoria.", errors = errores });

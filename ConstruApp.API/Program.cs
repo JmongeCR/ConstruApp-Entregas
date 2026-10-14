@@ -143,6 +143,9 @@ builder.Services.AddCors(options =>
         "http://localhost:5173", "https://localhost:5173",
         "http://localhost:5174", "https://localhost:5174",
         "http://localhost:5175", "https://localhost:5175",
+        "http://127.0.0.1:5173", "https://127.0.0.1:5173",
+        "http://127.0.0.1:5174", "https://127.0.0.1:5174",
+        "http://127.0.0.1:5175", "https://127.0.0.1:5175",
     };
     var prodOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];
 
