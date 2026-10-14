@@ -159,6 +159,20 @@ export default function PublicarProyecto() {
     areaM2:         '',
   });
 
+  // Keep a new-project draft when the user temporarily opens property management.
+  useEffect(() => {
+    if (editando) return;
+    const draft = sessionStorage.getItem('capp26-project-draft');
+    if (!draft) return;
+    try {
+      setForm(current => ({ ...current, ...JSON.parse(draft) }));
+    } catch {
+      // Ignore an invalid or stale browser draft.
+    } finally {
+      sessionStorage.removeItem('capp26-project-draft');
+    }
+  }, [editando]);
+
   const [touched, setTouched] = useState({});
 
   const [propiedades,     setPropiedades]     = useState([]);
@@ -183,8 +197,8 @@ export default function PublicarProyecto() {
           canton:         data.canton ?? '',
           distrito:       data.distrito ?? '',
           provincia:      data.provincia ?? '',
-          presupuestoMax: data.presupuestoMax ?? '',
-          areaM2:         data.areaM2 ?? '',
+          presupuestoMax: data.presupuestoMax != null ? String(data.presupuestoMax) : '',
+          areaM2:         data.areaM2 != null ? String(data.areaM2) : '',
         });
       })
       .catch(() => setError('No fue posible cargar la información del proyecto.'))
@@ -222,12 +236,16 @@ export default function PublicarProyecto() {
     tipoProyecto: touched.tipoProyecto && !form.tipoProyecto                   ? 'Seleccioná un tipo.'        : '',
     descripcion:  touched.descripcion  && form.descripcion.trim().length < 20  ? 'Mínimo 20 caracteres.'      : '',
     propiedadId:  touched.propiedadId  && !form.propiedadId                    ? 'Seleccioná una propiedad.'  : '',
+    areaM2:       touched.areaM2 && form.areaM2 !== '' && (!Number.isFinite(Number(form.areaM2)) || Number(form.areaM2) <= 0) ? 'El área debe ser mayor que cero.' : '',
+    presupuestoMax: touched.presupuestoMax && form.presupuestoMax !== '' && (!Number.isFinite(Number(form.presupuestoMax)) || Number(form.presupuestoMax) <= 0) ? 'El presupuesto debe ser mayor que cero.' : '',
   };
 
   /* Crea o actualiza la información general del proyecto. */
   const handleGuardarInformacion = async () => {
-    setTouched({ titulo: true, tipoProyecto: true, descripcion: true, propiedadId: true });
-    if (!form.tipoProyecto || !form.titulo.trim() || form.descripcion.trim().length < 20 || !form.propiedadId) {
+    setTouched({ titulo: true, tipoProyecto: true, descripcion: true, propiedadId: true, areaM2: true, presupuestoMax: true });
+    const areaInvalida = form.areaM2.trim() !== '' && (!Number.isFinite(Number(form.areaM2)) || Number(form.areaM2) <= 0);
+    const presupuestoInvalido = form.presupuestoMax.trim() !== '' && (!Number.isFinite(Number(form.presupuestoMax)) || Number(form.presupuestoMax) <= 0);
+    if (!form.tipoProyecto || !form.titulo.trim() || form.descripcion.trim().length < 20 || !form.propiedadId || areaInvalida || presupuestoInvalido) {
       scrollTo(!form.propiedadId && proyectoDone ? ubicRef : proyectoRef);
       return;
     }
@@ -242,8 +260,8 @@ export default function PublicarProyecto() {
         canton:         form.canton    || null,
         distrito:       form.distrito  || null,
         provincia:      form.provincia || null,
-        presupuestoMax: form.presupuestoMax ? parseFloat(form.presupuestoMax) : null,
-        areaM2:         form.areaM2 ? parseFloat(form.areaM2) : null,
+        presupuestoMax: form.presupuestoMax.trim() !== '' ? Number(form.presupuestoMax) : null,
+        areaM2:         form.areaM2.trim() !== '' ? Number(form.areaM2) : null,
       };
       const { data } = editando
         ? await proyectosApi.update(proyectoId, payload)
@@ -517,15 +535,19 @@ export default function PublicarProyecto() {
               )}
               {!form.propiedadId && propiedades.length === 0 && (
                 <Grid size={{ xs: 12 }}>
-                  <Alert severity="warning" action={
-                    <Button color="inherit" size="small" onClick={() => navigate('/propiedades')}>
-                      Registrar propiedad
-                    </Button>
-                  }>
+                  <Alert severity="warning">
                     Primero registrá una propiedad para asociarla al proyecto.
                   </Alert>
                 </Grid>
               )}
+              <Grid size={{ xs: 12 }}>
+                <Button size="small" variant="outlined" onClick={() => {
+                  sessionStorage.setItem('capp26-project-draft', JSON.stringify(form));
+                  navigate('/propiedades');
+                }}>
+                  {propiedades.length > 0 ? 'Agregar otra propiedad' : 'Registrar propiedad'}
+                </Button>
+              </Grid>
             </Grid>
           </FormSection>
 
@@ -535,17 +557,20 @@ export default function PublicarProyecto() {
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField fullWidth label="Área aproximada"
                   value={form.areaM2} onChange={set('areaM2')} type="number"
-                  slotProps={{ input: { endAdornment: <InputAdornment position="end">m²</InputAdornment> } }}
-                  helperText="Metros cuadrados del área de trabajo" />
+                  error={!!err.areaM2} onBlur={touch('areaM2')}
+                  helperText={err.areaM2 || 'Metros cuadrados del área de trabajo'}
+                  slotProps={{ htmlInput: { min: 0.01, step: 'any' }, input: { endAdornment: <InputAdornment position="end">m²</InputAdornment> } }}
+                  />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField fullWidth label="Presupuesto máximo"
                   value={form.presupuestoMax} onChange={set('presupuestoMax')} type="number"
-                  slotProps={{ input: { startAdornment: <InputAdornment position="start">₡</InputAdornment> } }}
+                  error={!!err.presupuestoMax} onBlur={touch('presupuestoMax')}
+                  slotProps={{ htmlInput: { min: 0.01, step: 'any' }, input: { startAdornment: <InputAdornment position="start">₡</InputAdornment> } }}
                   helperText={
-                    form.presupuestoMax
+                    err.presupuestoMax || (form.presupuestoMax
                       ? `₡ ${parseFloat(form.presupuestoMax).toLocaleString('es-CR')} · Podés ajustarlo luego`
-                      : 'Podés dejarlo vacío si aún no contás con un monto definido'
+                      : 'Podés dejarlo vacío si aún no contás con un monto definido')
                   } />
               </Grid>
             </Grid>

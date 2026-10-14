@@ -62,6 +62,45 @@ public class ProyectosControllerTests
         dependencies.UnitOfWork.Verify(unit => unit.SaveChangesAsync(), Times.Never);
     }
 
+    [Theory]
+    [InlineData(0, 8_000_000)]
+    [InlineData(-1, 8_000_000)]
+    [InlineData(25, 0)]
+    [InlineData(25, -1)]
+    public async Task Create_WithNonPositiveAreaOrBudget_ReturnsBadRequestWithoutSaving(decimal areaM2, decimal budget)
+    {
+        var dependencies = CreateController();
+        var request = ValidRequest() with { AreaM2 = areaM2, PresupuestoMax = budget };
+
+        var result = await dependencies.Controller.Create(request);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        dependencies.Propiedades.Verify(repository => repository.GetByIdAsync(It.IsAny<int>()), Times.Never);
+        dependencies.Proyectos.Verify(repository => repository.AddAsync(It.IsAny<Proyecto>()), Times.Never);
+        dependencies.UnitOfWork.Verify(unit => unit.SaveChangesAsync(), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(0, 8_000_000)]
+    [InlineData(-1, 8_000_000)]
+    [InlineData(25, 0)]
+    [InlineData(25, -1)]
+    public async Task Update_WithNonPositiveAreaOrBudget_ReturnsBadRequestWithoutUpdating(decimal areaM2, decimal budget)
+    {
+        var dependencies = CreateController();
+        var project = new Proyecto { Id = 9, ClienteId = 7, Titulo = "Proyecto anterior" };
+        dependencies.Proyectos.Setup(repository => repository.GetByIdAsync(9)).ReturnsAsync(project);
+
+        var result = await dependencies.Controller.Update(9,
+            ValidRequest() with { AreaM2 = areaM2, PresupuestoMax = budget });
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal("Proyecto anterior", project.Titulo);
+        dependencies.Propiedades.Verify(repository => repository.GetByIdAsync(It.IsAny<int>()), Times.Never);
+        dependencies.Proyectos.Verify(repository => repository.UpdateAsync(It.IsAny<Proyecto>()), Times.Never);
+        dependencies.UnitOfWork.Verify(unit => unit.SaveChangesAsync(), Times.Never);
+    }
+
     [Fact]
     public async Task Update_WithValidInformation_UpdatesGeneralFieldsWithoutLosingProjectState()
     {
