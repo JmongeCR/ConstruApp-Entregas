@@ -85,6 +85,12 @@ export default function PerfilConstructorEdit() {
 
   const handlePortfolioImages = (event) => {
     const files = Array.from(event.target.files ?? []);
+    if (files.length > 8) {
+      setPortfolio(current => ({ ...current, imagenes: files.slice(0, 8) }));
+      notify(`Seleccionaste ${files.length} imágenes. El límite es 8; se conservarán las primeras 8.`, 'warning');
+      event.target.value = '';
+      return;
+    }
     setPortfolio(current => ({ ...current, imagenes: files.slice(0, 8) }));
     event.target.value = '';
   };

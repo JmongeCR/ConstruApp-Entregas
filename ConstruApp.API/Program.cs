@@ -26,6 +26,10 @@ foreach (var (key, val) in envVars)
     if (!string.IsNullOrEmpty(val))
         builder.Configuration[key] = val;
 
+// Defaults shared by token issuance and validation when local config omits them.
+builder.Configuration["JwtSettings:Issuer"] ??= "ConstruApp";
+builder.Configuration["JwtSettings:Audience"] ??= "ConstruApp.Web";
+
 // ── Base de datos (Azure SQL) ─────────────────────────────────────────────
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
