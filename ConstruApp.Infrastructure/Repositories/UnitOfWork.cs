@@ -18,6 +18,7 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<PerfilConstructor> PerfilesConstructor { get; }
     public IRepository<PerfilProveedor>   PerfilesProveedor   { get; }
     public IRepository<PortafolioItem>    PortafolioItems     { get; }
+    public IRepository<PortafolioImagen>  PortafolioImagenes  { get; }
     public IRepository<Calificacion>        Calificaciones        { get; }
     public IRepository<Mensaje>             Mensajes              { get; }
     public IRepository<AvanceObra>          AvancesObra           { get; }
@@ -54,6 +55,7 @@ public class UnitOfWork : IUnitOfWork
         PerfilesConstructor   = new Repository<PerfilConstructor>(context);
         PerfilesProveedor     = new Repository<PerfilProveedor>(context);
         PortafolioItems       = new Repository<PortafolioItem>(context);
+        PortafolioImagenes    = new Repository<PortafolioImagen>(context);
         Calificaciones        = new Repository<Calificacion>(context);
         Mensajes              = new Repository<Mensaje>(context);
         AvancesObra           = new Repository<AvanceObra>(context);

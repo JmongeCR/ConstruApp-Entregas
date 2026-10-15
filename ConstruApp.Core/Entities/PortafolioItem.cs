@@ -11,4 +11,5 @@ public class PortafolioItem
 
     // Navegación
     public PerfilConstructor Constructor { get; set; } = null!;
+    public ICollection<PortafolioImagen> Imagenes { get; set; } = [];
 }

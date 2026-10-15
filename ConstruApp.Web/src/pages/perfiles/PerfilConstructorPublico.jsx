@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box, Typography, Grid, Chip, Avatar, Rating,
   Button, Divider, Skeleton, Dialog, DialogTitle,
-  DialogContent, DialogActions, Alert,
+  DialogContent, DialogActions, Alert, IconButton,
 } from '@mui/material';
 import ArrowBackIcon  from '@mui/icons-material/ArrowBack';
 import VerifiedIcon   from '@mui/icons-material/Verified';
@@ -16,8 +16,14 @@ import InstagramIcon  from '@mui/icons-material/Instagram';
 import CheckIcon      from '@mui/icons-material/Check';
 import BusinessIcon   from '@mui/icons-material/Business';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import CloseIcon from '@mui/icons-material/Close';
 import { perfilesConstructorApi } from '../../api/endpoints';
 import { useAuth } from '../../context/AuthContext';
+
+const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') ?? 'http://localhost:5115';
+const assetUrl = (url) => url?.startsWith('/') ? `${API_BASE}${url}` : url;
 
 const AVATAR_PALETTE = ['#4F46E5','#0EA5E9','#10B981','#2563EB','#8B5CF6','#EC4899','#EF4444'];
 const avatarBg = (name) => AVATAR_PALETTE[(name?.charCodeAt(0) ?? 0) % AVATAR_PALETTE.length];
@@ -103,6 +109,57 @@ function SolicitarPropuestaModal({ perfil, proyectoTitulo, open, onClose }) {
   );
 }
 
+function PortfolioGalleryDialog({ item, onClose }) {
+  const [index, setIndex] = useState(0);
+  const images = item?.imagenUrls?.length ? item.imagenUrls : item?.imagenUrl ? [item.imagenUrl] : [];
+
+  if (!item) return null;
+  const currentIndex = Math.min(index, images.length - 1);
+  const handleClose = () => {
+    setIndex(0);
+    onClose();
+  };
+
+  return (
+    <Dialog open onClose={handleClose} maxWidth="md" fullWidth>
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+        <Box>
+          <Typography fontSize={16} fontWeight={700}>{item.titulo}</Typography>
+          {images.length > 1 && (
+            <Typography fontSize={12} color="text.secondary">Fotografía {currentIndex + 1} de {images.length}</Typography>
+          )}
+        </Box>
+        <IconButton onClick={handleClose} aria-label="Cerrar galería"><CloseIcon /></IconButton>
+      </DialogTitle>
+      <DialogContent sx={{ p: 0, bgcolor: '#0F172A', position: 'relative' }}>
+        <Box component="img" src={assetUrl(images[currentIndex])} alt={`${item.titulo}, fotografía ${currentIndex + 1}`}
+          sx={{ display: 'block', width: '100%', height: { xs: 300, sm: 520 }, objectFit: 'contain' }} />
+        {images.length > 1 && (
+          <>
+            <IconButton aria-label="Fotografía anterior"
+              onClick={() => setIndex(current => (current - 1 + images.length) % images.length)}
+              sx={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+                bgcolor: 'rgba(255,255,255,.9)', '&:hover': { bgcolor: 'white' } }}>
+              <ChevronLeftIcon />
+            </IconButton>
+            <IconButton aria-label="Fotografía siguiente"
+              onClick={() => setIndex(current => (current + 1) % images.length)}
+              sx={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                bgcolor: 'rgba(255,255,255,.9)', '&:hover': { bgcolor: 'white' } }}>
+              <ChevronRightIcon />
+            </IconButton>
+          </>
+        )}
+      </DialogContent>
+      {item.descripcion && (
+        <DialogContent sx={{ pt: 2 }}>
+          <Typography fontSize={13.5} color="text.secondary" lineHeight={1.7}>{item.descripcion}</Typography>
+        </DialogContent>
+      )}
+    </Dialog>
+  );
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    PERFIL PÚBLICO DE CONSTRUCTORA
 ══════════════════════════════════════════════════════════════════════════ */
@@ -120,6 +177,7 @@ export default function PerfilConstructorPublico() {
   const [perfil,  setPerfil]  = useState(null);
   const [loading, setLoading] = useState(true);
   const [modal,   setModal]   = useState(false);
+  const [portfolioSelected, setPortfolioSelected] = useState(null);
 
   useEffect(() => {
     perfilesConstructorApi.getById(id)
@@ -275,15 +333,26 @@ export default function PerfilConstructorPublico() {
               <Grid container spacing={1.5}>
                 {perfil.portafolioItems.map(item => (
                   <Grid size={{ xs: 12, sm: 6 }} key={item.id}>
-                    <Box sx={{ borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+                    <Box role="button" tabIndex={0} onClick={() => setPortfolioSelected(item)}
+                      onKeyDown={event => {
+                        if (event.key === 'Enter' || event.key === ' ') setPortfolioSelected(item);
+                      }}
+                      sx={{ borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider',
+                        cursor: 'pointer', height: '100%', transition: 'border-color .2s, transform .2s',
+                        '&:hover': { borderColor: 'primary.main', transform: 'translateY(-1px)' } }}>
                       {item.imagenUrl && (
-                        <Box component="img" src={item.imagenUrl} alt={item.titulo}
+                        <Box component="img" src={assetUrl(item.imagenUrl)} alt={item.titulo}
                           sx={{ width: '100%', height: 150, objectFit: 'cover', display: 'block' }} />
                       )}
                       <Box sx={{ p: 1.5 }}>
                         <Typography fontSize={13} fontWeight={600}>{item.titulo}</Typography>
                         {item.descripcion && (
                           <Typography fontSize={12} color="text.secondary" mt={0.25}>{item.descripcion}</Typography>
+                        )}
+                        {(item.imagenUrls?.length ?? 1) > 1 && (
+                          <Typography fontSize={11.5} color="primary.main" fontWeight={600} mt={0.75}>
+                            Ver {item.imagenUrls.length} fotografías
+                          </Typography>
                         )}
                       </Box>
                     </Box>
@@ -427,6 +496,7 @@ export default function PerfilConstructorPublico() {
         open={modal}
         onClose={() => setModal(false)}
       />
+      <PortfolioGalleryDialog item={portfolioSelected} onClose={() => setPortfolioSelected(null)} />
     </Box>
   );
 }

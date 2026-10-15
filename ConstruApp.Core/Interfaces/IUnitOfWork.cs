@@ -14,6 +14,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<PerfilConstructor> PerfilesConstructor { get; }
     IRepository<PerfilProveedor>   PerfilesProveedor  { get; }
     IRepository<PortafolioItem>    PortafolioItems    { get; }
+    IRepository<PortafolioImagen>  PortafolioImagenes { get; }
     IRepository<Calificacion>        Calificaciones        { get; }
     IRepository<Mensaje>             Mensajes              { get; }
     IRepository<AvanceObra>          AvancesObra           { get; }

@@ -20,6 +20,7 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
     public DbSet<PerfilConstructor> PerfilesConstructor => Set<PerfilConstructor>();
     public DbSet<PerfilProveedor>   PerfilesProveedor   => Set<PerfilProveedor>();
     public DbSet<PortafolioItem>    PortafolioItems     => Set<PortafolioItem>();
+    public DbSet<PortafolioImagen>  PortafolioImagenes  => Set<PortafolioImagen>();
     public DbSet<Calificacion>      Calificaciones      => Set<Calificacion>();
     public DbSet<Mensaje>               Mensajes              => Set<Mensaje>();
     public DbSet<AvanceObra>            AvancesObra           => Set<AvanceObra>();
@@ -242,6 +243,17 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
             e.HasOne(p => p.Constructor)
              .WithMany(c => c.PortafolioItems)
              .HasForeignKey(p => p.ConstructorId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PortafolioImagen>(e =>
+        {
+            e.HasKey(i => i.Id);
+            e.Property(i => i.Url).HasMaxLength(500).IsRequired();
+
+            e.HasOne(i => i.PortafolioItem)
+             .WithMany(p => p.Imagenes)
+             .HasForeignKey(i => i.PortafolioItemId)
              .OnDelete(DeleteBehavior.Cascade);
         });
 
