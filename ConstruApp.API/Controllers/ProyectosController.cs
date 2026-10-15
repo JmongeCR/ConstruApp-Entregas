@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ConstruApp.API.DTOs.Historial;
 using ConstruApp.API.Services;
 using ConstruApp.Core.Entities;
 using ConstruApp.Core.Enums;
@@ -39,6 +40,107 @@ public class ProyectosController : ControllerBase
         var userId   = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var proyectos = await _uow.Proyectos.FindAsync(p => p.ClienteId == userId);
         return Ok(proyectos.OrderByDescending(p => p.FechaPublicacion).Select(MapDto));
+    }
+
+    // GET api/proyectos/historial — historial cronológico del cliente autenticado
+    [HttpGet("historial")]
+    public async Task<ActionResult<IEnumerable<HistorialProyectoResumenDto>>> GetHistorial()
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var proyectos = (await _uow.Proyectos.FindAsync(p => p.ClienteId == userId))
+            .OrderByDescending(p => p.FechaPublicacion)
+            .ToList();
+
+        if (proyectos.Count == 0)
+            return Ok(Array.Empty<HistorialProyectoResumenDto>());
+
+        var ids = proyectos.Select(p => p.Id).ToArray();
+        var propuestas = (await _uow.Propuestas.FindAsync(p => ids.Contains(p.ProyectoId))).ToList();
+        var cotizaciones = (await _uow.CotizacionesIA.FindAsync(c => ids.Contains(c.ProyectoId))).ToList();
+        var perfiles = await CargarPerfiles(propuestas.Select(p => p.ConstructorId));
+
+        return Ok(proyectos.Select(p => CrearResumen(
+            p,
+            propuestas.Where(x => x.ProyectoId == p.Id),
+            cotizaciones.Count(x => x.ProyectoId == p.Id),
+            perfiles)));
+    }
+
+    // GET api/proyectos/historial/{id} — detalle integral de un proyecto del cliente
+    [HttpGet("historial/{id:int}")]
+    public async Task<ActionResult<HistorialProyectoDetalleDto>> GetHistorialDetalle(int id)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var proyecto = await _uow.Proyectos.GetByIdAsync(id);
+        if (proyecto is null) return NotFound();
+        if (proyecto.ClienteId != userId) return Forbid();
+
+        var propuestas = (await _uow.Propuestas.FindAsync(p => p.ProyectoId == id))
+            .OrderByDescending(p => p.FechaEnvio)
+            .ToList();
+        var perfiles = await CargarPerfiles(propuestas.Select(p => p.ConstructorId));
+        var cotizaciones = (await _uow.CotizacionesIA.FindAsync(c => c.ProyectoId == id))
+            .OrderByDescending(c => c.FechaGeneracion)
+            .ToList();
+        var avances = (await _uow.AvancesObra.FindAsync(a => a.ProyectoId == id))
+            .OrderByDescending(a => a.Fecha)
+            .ToList();
+        var documentos = (await _uow.Archivos.FindAsync(a => a.ProyectoId == id))
+            .OrderByDescending(a => a.FechaSubida)
+            .ToList();
+        var facturas = (await _uow.Facturas.FindAsync(f => f.ProyectoId == id))
+            .OrderByDescending(f => f.FechaEmision)
+            .ToList();
+
+        var resumen = CrearResumen(proyecto, propuestas, cotizaciones.Count, perfiles);
+        return Ok(new HistorialProyectoDetalleDto(
+            resumen,
+            propuestas.Select(p => new HistorialPropuestaDto(
+                p.Id,
+                p.ConstructorId,
+                NombreProveedor(p.ConstructorId, perfiles),
+                p.MontoTotal,
+                p.Descripcion,
+                p.PlazoEstimadoDias,
+                p.Estado.ToString(),
+                p.FechaEnvio,
+                p.FechaRespuesta)).ToList(),
+            cotizaciones.Select(c => new HistorialCotizacionDto(
+                c.Id,
+                c.RangoMinimo,
+                c.RangoMaximo,
+                c.ResumenIA,
+                c.Plan,
+                c.NombrePlan,
+                c.Estado,
+                c.Version,
+                c.FechaGeneracion)).ToList(),
+            avances.Select(a => new HistorialAvanceDto(
+                a.Id,
+                a.Titulo,
+                a.Descripcion,
+                a.Responsable,
+                a.PorcentajeAvance,
+                a.Fecha)).ToList(),
+            documentos.Select(a => new HistorialArchivoDto(
+                a.Id,
+                a.NombreArchivo,
+                a.Url,
+                a.TipoArchivo,
+                a.Categoria,
+                a.Descripcion,
+                a.FechaSubida)).ToList(),
+            facturas.Select(f => new HistorialFacturaDto(
+                f.Id,
+                f.Numero,
+                f.Concepto,
+                f.MontoTotal,
+                f.MontoPagado,
+                f.Saldo,
+                f.Estado.ToString(),
+                f.FechaEmision,
+                f.FechaVencimiento)).ToList()
+        ));
     }
 
     // GET api/proyectos/publicados
@@ -220,6 +322,67 @@ public class ProyectosController : ControllerBase
         p.FechaPublicacion,
         p.FechaInicio,
         p.FechaFin,
+    };
+
+    private async Task<Dictionary<int, string>> CargarPerfiles(IEnumerable<int> constructorIds)
+    {
+        var ids = constructorIds.Distinct().ToArray();
+        if (ids.Length == 0) return [];
+
+        return (await _uow.PerfilesConstructor.FindAsync(p => ids.Contains(p.Id)))
+            .ToDictionary(p => p.Id, p => p.NombreEmpresa);
+    }
+
+    private static HistorialProyectoResumenDto CrearResumen(
+        Proyecto proyecto,
+        IEnumerable<Propuesta> propuestasProyecto,
+        int cantidadCotizaciones,
+        IReadOnlyDictionary<int, string> perfiles)
+    {
+        var propuestas = propuestasProyecto.ToList();
+        var contratada = propuestas
+            .Where(p => p.Estado is EstadoPropuesta.Aceptada or EstadoPropuesta.Finalizada)
+            .OrderByDescending(p => p.FechaRespuesta ?? p.FechaEnvio)
+            .FirstOrDefault();
+        var proveedores = propuestas
+            .Select(p => NombreProveedor(p.ConstructorId, perfiles))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(n => n)
+            .ToList();
+
+        return new HistorialProyectoResumenDto(
+            proyecto.Id,
+            proyecto.Titulo,
+            proyecto.Descripcion,
+            proyecto.TipoProyecto.ToString(),
+            proyecto.Estado.ToString(),
+            proyecto.Canton,
+            proyecto.Provincia,
+            proyecto.PresupuestoMax,
+            proyecto.FechaPublicacion,
+            proyecto.FechaInicio,
+            proyecto.FechaFin,
+            propuestas.Count,
+            cantidadCotizaciones,
+            proveedores,
+            contratada is null ? null : NombreProveedor(contratada.ConstructorId, perfiles),
+            contratada?.MontoTotal,
+            ResultadoProyecto(proyecto.Estado, contratada));
+    }
+
+    private static string NombreProveedor(int constructorId, IReadOnlyDictionary<int, string> perfiles) =>
+        perfiles.TryGetValue(constructorId, out var nombre) && !string.IsNullOrWhiteSpace(nombre)
+            ? nombre
+            : $"Proveedor #{constructorId}";
+
+    private static string ResultadoProyecto(EstadoProyecto estado, Propuesta? contratada) => estado switch
+    {
+        EstadoProyecto.Completado => "Proyecto completado",
+        EstadoProyecto.Cancelado => "Proyecto cancelado",
+        EstadoProyecto.EnCurso when contratada is not null => "Contratación en ejecución",
+        EstadoProyecto.EnPropuestas => "Cotizaciones en evaluación",
+        EstadoProyecto.Publicado => "Publicado para recibir cotizaciones",
+        _ => "Borrador"
     };
 }
 
