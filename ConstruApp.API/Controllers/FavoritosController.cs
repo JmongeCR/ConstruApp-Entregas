@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ConstruApp.API.DTOs.Favoritos;
 using ConstruApp.Core.Entities;
 using ConstruApp.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -83,4 +84,87 @@ public class FavoritosController : ControllerBase
         await _uow.SaveChangesAsync();
         return NoContent();
     }
+
+    // GET api/favoritos/constructores — constructoras guardadas por el cliente
+    [HttpGet("constructores")]
+    [Authorize(Roles = "Cliente,Admin")]
+    public async Task<ActionResult<IEnumerable<ConstructoraFavoritaDto>>> GetConstructoras()
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var favoritos = (await _uow.FavoritosConstructor.FindAsync(f => f.ClienteId == userId))
+            .OrderByDescending(f => f.FechaAgregado)
+            .ToList();
+
+        if (favoritos.Count == 0)
+            return Ok(Array.Empty<ConstructoraFavoritaDto>());
+
+        var ids = favoritos.Select(f => f.PerfilConstructorId).ToArray();
+        var perfiles = (await _uow.PerfilesConstructor.FindAsync(p => ids.Contains(p.Id)))
+            .ToDictionary(p => p.Id);
+
+        return Ok(favoritos
+            .Where(f => perfiles.ContainsKey(f.PerfilConstructorId))
+            .Select(f => MapConstructora(f, perfiles[f.PerfilConstructorId])));
+    }
+
+    // POST api/favoritos/constructores/{perfilId}
+    [HttpPost("constructores/{perfilId:int}")]
+    [Authorize(Roles = "Cliente,Admin")]
+    public async Task<IActionResult> AgregarConstructora(int perfilId)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var perfil = await _uow.PerfilesConstructor.GetByIdAsync(perfilId);
+        if (perfil is null)
+            return NotFound(new { message = "La constructora no existe." });
+
+        var existe = await _uow.FavoritosConstructor.ExistsAsync(
+            f => f.ClienteId == userId && f.PerfilConstructorId == perfilId);
+        if (existe)
+            return Conflict(new { message = "Esta constructora ya pertenece a tus favoritos." });
+
+        var favorito = new FavoritoConstructor
+        {
+            ClienteId = userId,
+            PerfilConstructorId = perfilId,
+            FechaAgregado = DateTime.UtcNow,
+        };
+
+        await _uow.FavoritosConstructor.AddAsync(favorito);
+        await _uow.SaveChangesAsync();
+
+        return CreatedAtAction(
+            nameof(GetConstructoras),
+            new { id = favorito.Id },
+            MapConstructora(favorito, perfil));
+    }
+
+    // DELETE api/favoritos/constructores/{perfilId}
+    [HttpDelete("constructores/{perfilId:int}")]
+    [Authorize(Roles = "Cliente,Admin")]
+    public async Task<IActionResult> QuitarConstructora(int perfilId)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var favorito = (await _uow.FavoritosConstructor.FindAsync(
+            f => f.ClienteId == userId && f.PerfilConstructorId == perfilId)).FirstOrDefault();
+
+        if (favorito is null) return NotFound();
+
+        await _uow.FavoritosConstructor.DeleteAsync(favorito);
+        await _uow.SaveChangesAsync();
+        return NoContent();
+    }
+
+    private static ConstructoraFavoritaDto MapConstructora(
+        FavoritoConstructor favorito,
+        PerfilConstructor perfil) => new(
+            favorito.Id,
+            favorito.PerfilConstructorId,
+            favorito.FechaAgregado,
+            perfil.NombreEmpresa,
+            perfil.Bio,
+            perfil.Especialidades,
+            perfil.ZonasCobertura,
+            perfil.Verificado,
+            perfil.CalificacionPromedio,
+            perfil.TotalProyectos);
 }

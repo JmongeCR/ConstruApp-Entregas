@@ -47,6 +47,8 @@ builder.Services.AddIdentity<Usuario, IdentityRole<int>>(options =>
 // ── JWT ────────────────────────────────────────────────────────────────────
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey   = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!);
+var jwtIssuer   = jwtSettings["Issuer"]   ?? "ConstruApp.API";
+var jwtAudience = jwtSettings["Audience"] ?? "ConstruApp.Web";
 
 builder.Services.AddAuthentication(options =>
 {
@@ -61,8 +63,8 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience         = true,
         ValidateLifetime         = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer              = jwtSettings["Issuer"],
-        ValidAudience            = jwtSettings["Audience"],
+        ValidIssuer              = jwtIssuer,
+        ValidAudience            = jwtAudience,
         IssuerSigningKey         = new SymmetricSecurityKey(secretKey),
         ClockSkew                = TimeSpan.Zero
     };

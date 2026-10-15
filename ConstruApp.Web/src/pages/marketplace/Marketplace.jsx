@@ -4,12 +4,14 @@ import {
   Box, Typography, TextField, InputAdornment, Select, MenuItem,
   FormControl, InputLabel, Button, Chip, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow,
-  Skeleton, Alert, useTheme, useMediaQuery,
+  Skeleton, Alert, IconButton, Tooltip, useTheme, useMediaQuery,
 } from '@mui/material';
 import SearchIcon        from '@mui/icons-material/Search';
 import VerifiedIcon      from '@mui/icons-material/Verified';
 import AssignmentIcon    from '@mui/icons-material/Assignment';
-import { perfilesConstructorApi, proyectosApi } from '../../api/endpoints';
+import FavoriteIcon      from '@mui/icons-material/Favorite';
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
+import { favoritosApi, perfilesConstructorApi, proyectosApi } from '../../api/endpoints';
 import { useAuth } from '../../context/AuthContext';
 import PageHeader from '../../components/common/PageHeader';
 
@@ -68,10 +70,11 @@ export default function Marketplace() {
   /* ── Contexto de proyecto (Cliente/Admin) ────────────────────────────── */
   const [misProyectos,    setMisProyectos]    = useState([]);
   const [proyectoActivo,  setProyectoActivo]  = useState(null);
+  const [favoritos,       setFavoritos]       = useState(new Set());
 
   /* ── Estado: vista Constructor ───────────────────────────────────────── */
   const [proyectos,     setProyectos]     = useState([]);
-  const [loadingProy,   setLoadingProy]   = useState(false);
+  const [loadingProy,   setLoadingProy]   = useState(esConstructor);
   const [buscarProy,    setBuscarProy]    = useState('');
   const [tipoProy,      setTipoProy]      = useState('');
   const [provinciaProy, setProvinciaProy] = useState('Todas');
@@ -79,7 +82,6 @@ export default function Marketplace() {
   /* ── Carga de datos ──────────────────────────────────────────────────── */
   useEffect(() => {
     if (esConstructor) {
-      setLoadingProy(true);
       proyectosApi.getPublicados()
         .then(r => setProyectos(r.data ?? []))
         .catch(() => {})
@@ -88,7 +90,6 @@ export default function Marketplace() {
     }
 
     /* Cliente / Admin */
-    setLoading(true);
     const cargarConstructores = perfilesConstructorApi.getAll()
       .then(r => setConstructores(r.data ?? []))
       .catch(() => setError('No se pudo cargar el directorio.'));
@@ -101,8 +102,14 @@ export default function Marketplace() {
       })
       .catch(() => {});
 
-    Promise.all([cargarConstructores, cargarProyectos]).finally(() => setLoading(false));
-  }, [esConstructor]);
+    const cargarFavoritos = usuario?.rol === 'Cliente'
+      ? favoritosApi.getConstructoras()
+          .then(r => setFavoritos(new Set((r.data ?? []).map(f => f.perfilConstructorId))))
+          .catch(() => {})
+      : Promise.resolve();
+
+    Promise.all([cargarConstructores, cargarProyectos, cargarFavoritos]).finally(() => setLoading(false));
+  }, [esConstructor, usuario?.rol]);
 
   /* ── Especialidades dinámicas ────────────────────────────────────────── */
   const especialidades = useMemo(() => {
@@ -136,6 +143,23 @@ export default function Marketplace() {
       ? { proyectoId: proyectoActivo.id, proyectoTitulo: proyectoActivo.titulo, proyectoTipo: proyectoActivo.tipoProyecto }
       : {},
   });
+
+  const toggleFavorito = async (event, perfilId) => {
+    event.stopPropagation();
+    const guardado = favoritos.has(perfilId);
+    try {
+      if (guardado) await favoritosApi.quitarConstructora(perfilId);
+      else await favoritosApi.agregarConstructora(perfilId);
+      setFavoritos(actuales => {
+        const siguientes = new Set(actuales);
+        if (guardado) siguientes.delete(perfilId);
+        else siguientes.add(perfilId);
+        return siguientes;
+      });
+    } catch (e) {
+      setError(e.response?.data?.message || 'No fue posible actualizar tus favoritos.');
+    }
+  };
 
   /* ═══════════════════════════════════════════════════════════════════════
      VISTA CONSTRUCTOR — Proyectos disponibles
@@ -377,6 +401,13 @@ export default function Marketplace() {
                 )}
               </Box>
               <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+                {usuario?.rol === 'Cliente' && (
+                  <Tooltip title={favoritos.has(c.id) ? 'Quitar de favoritos' : 'Agregar a favoritos'}>
+                    <IconButton size="small" onClick={e => toggleFavorito(e, c.id)} sx={{ color: favoritos.has(c.id) ? '#E11D48' : 'text.disabled' }}>
+                      {favoritos.has(c.id) ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
+                    </IconButton>
+                  </Tooltip>
+                )}
                 {c.calificacionPromedio > 0 && (
                   <Typography fontSize={12.5} fontWeight={600}>{c.calificacionPromedio?.toFixed(1)} ★</Typography>
                 )}
@@ -459,11 +490,20 @@ export default function Marketplace() {
                     {c.aniosExperiencia > 0 ? `${c.aniosExperiencia} años` : '—'}
                   </TableCell>
                   <TableCell align="right" sx={{ pr: 2 }}>
-                    <Button size="small" variant="outlined"
-                      onClick={e => { e.stopPropagation(); verPerfil(c.id); }}
-                      sx={{ fontSize: 12, py: 0.3, px: 1.5, whiteSpace: 'nowrap' }}>
-                      Ver perfil
-                    </Button>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
+                      {usuario?.rol === 'Cliente' && (
+                        <Tooltip title={favoritos.has(c.id) ? 'Quitar de favoritos' : 'Agregar a favoritos'}>
+                          <IconButton size="small" onClick={e => toggleFavorito(e, c.id)} sx={{ color: favoritos.has(c.id) ? '#E11D48' : 'text.disabled' }}>
+                            {favoritos.has(c.id) ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      <Button size="small" variant="outlined"
+                        onClick={e => { e.stopPropagation(); verPerfil(c.id); }}
+                        sx={{ fontSize: 12, py: 0.3, px: 1.5, whiteSpace: 'nowrap' }}>
+                        Ver perfil
+                      </Button>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))}

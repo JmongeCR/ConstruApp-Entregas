@@ -644,6 +644,33 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.ToTable("FasesProyecto");
                 });
 
+            modelBuilder.Entity("ConstruApp.Core.Entities.FavoritoConstructor", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ClienteId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("FechaAgregado")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("PerfilConstructorId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PerfilConstructorId");
+
+                    b.HasIndex("ClienteId", "PerfilConstructorId")
+                        .IsUnique();
+
+                    b.ToTable("FavoritosConstructor");
+                });
+
             modelBuilder.Entity("ConstruApp.Core.Entities.FavoritoProveedor", b =>
                 {
                     b.Property<int>("Id")
@@ -2130,6 +2157,25 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.Navigation("Proyecto");
 
                     b.Navigation("Responsable");
+                });
+
+            modelBuilder.Entity("ConstruApp.Core.Entities.FavoritoConstructor", b =>
+                {
+                    b.HasOne("ConstruApp.Core.Entities.Usuario", "Cliente")
+                        .WithMany()
+                        .HasForeignKey("ClienteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ConstruApp.Core.Entities.PerfilConstructor", "PerfilConstructor")
+                        .WithMany()
+                        .HasForeignKey("PerfilConstructorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Cliente");
+
+                    b.Navigation("PerfilConstructor");
                 });
 
             modelBuilder.Entity("ConstruApp.Core.Entities.FavoritoProveedor", b =>

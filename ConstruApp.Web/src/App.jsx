@@ -35,6 +35,7 @@ const HistorialProyectos = lazy(() => import('./pages/proyectos/HistorialProyect
 const Proyectos          = lazy(() => import('./pages/proyectos/Proyectos'));
 const Trabajadores       = lazy(() => import('./pages/trabajadores/Trabajadores'));
 const ProveedoresFavoritos = lazy(() => import('./pages/favoritos/ProveedoresFavoritos'));
+const ConstructorasFavoritas = lazy(() => import('./pages/favoritos/ConstructorasFavoritas'));
 const Marketplace        = lazy(() => import('./pages/marketplace/Marketplace'));
 const CotizacionesIA     = lazy(() => import('./pages/cotizaciones-ia/CotizacionesIA'));
 const Cronograma         = lazy(() => import('./pages/cronograma/Cronograma'));
@@ -81,6 +82,7 @@ const NAV_LINKS = [
   { label: 'Mis proyectos',    path: '/mis-proyectos',         Icon: FolderOpenOutlinedIcon,     roles: ['Cliente'] },
   { label: 'Historial',        path: '/historial',             Icon: HistoryOutlinedIcon,        roles: ['Cliente'] },
   { label: 'Constructores',    path: '/marketplace',           Icon: StoreOutlinedIcon,          roles: ['Cliente'] },
+  { label: 'Favoritos',        path: '/favoritos',             Icon: FavoriteBorderIcon,         roles: ['Cliente'] },
   { label: 'Cotizaciones IA',  path: '/cotizaciones-ia',       Icon: AutoAwesomeOutlinedIcon,    roles: ['Cliente'] },
   { label: 'Cronograma',       path: '/cronograma',            Icon: TimelineOutlinedIcon,       roles: ['Cliente'] },
   { label: 'Calendario',       path: '/calendario',            Icon: CalendarMonthOutlinedIcon,  roles: ['Cliente'] },
@@ -325,6 +327,7 @@ function AppRoutes() {
         <Route path="/historial"               element={<RoleGuard roles={['Cliente','Admin']}><HistorialProyectos /></RoleGuard>} />
         <Route path="/publicar"                element={<RoleGuard roles={['Cliente','Admin']}><PublicarProyecto /></RoleGuard>} />
         <Route path="/marketplace"             element={<RoleGuard roles={['Cliente','Admin','Constructor']}><Marketplace /></RoleGuard>} />
+        <Route path="/favoritos"               element={<RoleGuard roles={['Cliente','Admin']}><ConstructorasFavoritas /></RoleGuard>} />
         <Route path="/cotizaciones-ia"         element={<RoleGuard roles={['Cliente','Admin']}><CotizacionesIA /></RoleGuard>} />
         <Route path="/cronograma"              element={<RoleGuard roles={['Cliente','Admin']}><Cronograma /></RoleGuard>} />
         <Route path="/calendario"             element={<RoleGuard roles={['Cliente','Admin']}><Calendario /></RoleGuard>} />

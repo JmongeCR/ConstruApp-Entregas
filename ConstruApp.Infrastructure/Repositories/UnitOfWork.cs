@@ -40,6 +40,7 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<Notificacion>            Notificaciones        { get; }
     public IRepository<EmailLog>                EmailLogs             { get; }
     public IRepository<FavoritoProveedor>       FavoritosProveedor    { get; }
+    public IRepository<FavoritoConstructor>     FavoritosConstructor  { get; }
 
     public UnitOfWork(AppDbContext context)
     {
@@ -76,6 +77,7 @@ public class UnitOfWork : IUnitOfWork
         Notificaciones        = new Repository<Notificacion>(context);
         EmailLogs             = new Repository<EmailLog>(context);
         FavoritosProveedor    = new Repository<FavoritoProveedor>(context);
+        FavoritosConstructor  = new Repository<FavoritoConstructor>(context);
     }
 
     public async Task<int> SaveChangesAsync() => await _context.SaveChangesAsync();
