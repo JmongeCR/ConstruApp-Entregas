@@ -137,14 +137,19 @@ builder.Services.AddSwaggerGen(c =>
 // ── CORS ───────────────────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
-    var devOrigins  = new[] { "http://localhost:5173", "https://localhost:5173", "http://localhost:5174", "https://localhost:5174" };
     var prodOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];
 
     options.AddPolicy("AppPolicy", policy =>
     {
-        var origins = builder.Environment.IsDevelopment() ? devOrigins : prodOrigins;
-        if (origins.Length > 0)
-            policy.WithOrigins(origins).AllowAnyMethod().AllowAnyHeader().AllowCredentials();
+        if (builder.Environment.IsDevelopment())
+            policy.SetIsOriginAllowed(origin =>
+            {
+                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)) return false;
+                return uri.Scheme is "http" or "https"
+                    && uri.Host is "localhost" or "127.0.0.1";
+            }).AllowAnyMethod().AllowAnyHeader().AllowCredentials();
+        else if (prodOrigins.Length > 0)
+            policy.WithOrigins(prodOrigins).AllowAnyMethod().AllowAnyHeader().AllowCredentials();
         else
             policy.SetIsOriginAllowed(_ => true).AllowAnyMethod().AllowAnyHeader().AllowCredentials();
     });
