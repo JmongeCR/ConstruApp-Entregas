@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box, Typography, TextField, Button, Grid, Alert,
   CircularProgress, InputAdornment, Divider, Chip, Autocomplete,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import PublishIcon           from '@mui/icons-material/Publish';
 import BookmarkIcon          from '@mui/icons-material/Bookmark';
 import CheckIcon             from '@mui/icons-material/Check';
+import SaveOutlinedIcon      from '@mui/icons-material/SaveOutlined';
 import { proyectosApi, propiedadesApi } from '../../api/endpoints';
 import PageHeader from '../../components/common/PageHeader';
 
@@ -137,9 +137,12 @@ function SummaryPanel({ form }) {
 ══════════════════════════════════════════════════════════════════════════ */
 export default function PublicarProyecto() {
   const navigate = useNavigate();
+  const { proyectoId } = useParams();
+  const editando = Boolean(proyectoId);
 
   const [step]                  = useState(0); /* 0 = form, 1 = resultado IA */
   const [loading,  setLoading]  = useState(false);
+  const [loadingProject, setLoadingProject] = useState(editando);
   const [error,    setError]    = useState('');
   const [proyecto, setProyecto] = useState(null);
   const [planes]                = useState([]);
@@ -156,16 +159,22 @@ export default function PublicarProyecto() {
     areaM2:         '',
   });
 
+  // Keep a new-project draft when the user temporarily opens property management.
+  useEffect(() => {
+    if (editando) return;
+    const draft = sessionStorage.getItem('capp26-project-draft');
+    if (!draft) return;
+    try {
+      setForm(current => ({ ...current, ...JSON.parse(draft) }));
+    } catch {
+      // Ignore an invalid or stale browser draft.
+    } finally {
+      sessionStorage.removeItem('capp26-project-draft');
+    }
+  }, [editando]);
+
   const [touched, setTouched] = useState({});
 
-  /* Ubicaciones API */
-  const [provincias,      setProvincias]      = useState([]);
-  const [cantones,        setCantones]        = useState([]);
-  const [distritos,       setDistritos]       = useState([]);
-  const [loadingCantones, setLoadingCantones] = useState(false);
-  const [loadingDistritos,setLoadingDistritos]= useState(false);
-  const [provinciaId,     setProvinciaId]     = useState('');
-  const [cantonId,        setCantonId]        = useState('');
   const [propiedades,     setPropiedades]     = useState([]);
 
   useEffect(() => {
@@ -174,32 +183,27 @@ export default function PublicarProyecto() {
       .catch(() => setPropiedades([]));
   }, []);
 
-  const toOptions = (obj) => Object.entries(obj).map(([id, name]) => ({ id, name }));
-
   useEffect(() => {
-    fetch('https://ubicaciones.paginasweb.cr/provincias.json')
-      .then(r => r.json())
-      .then(data => setProvincias(toOptions(data)))
-      .catch(() => {});
-  }, []);
+    if (!editando) return;
 
-  useEffect(() => {
-    if (!provinciaId) return;
-    fetch(`https://ubicaciones.paginasweb.cr/provincia/${provinciaId}/cantones.json`)
-      .then(r => r.json())
-      .then(data => setCantones(toOptions(data)))
-      .catch(() => setCantones([]))
-      .finally(() => setLoadingCantones(false));
-  }, [provinciaId]);
-
-  useEffect(() => {
-    if (!provinciaId || !cantonId) return;
-    fetch(`https://ubicaciones.paginasweb.cr/provincia/${provinciaId}/canton/${cantonId}/distritos.json`)
-      .then(r => r.json())
-      .then(data => setDistritos(toOptions(data)))
-      .catch(() => setDistritos([]))
-      .finally(() => setLoadingDistritos(false));
-  }, [provinciaId, cantonId]);
+    proyectosApi.getById(proyectoId)
+      .then(({ data }) => {
+        setProyecto(data);
+        setForm({
+          titulo:         data.titulo ?? '',
+          propiedadId:    data.propiedadId ?? null,
+          descripcion:    data.descripcion ?? '',
+          tipoProyecto:   data.tipoProyecto ?? '',
+          canton:         data.canton ?? '',
+          distrito:       data.distrito ?? '',
+          provincia:      data.provincia ?? '',
+          presupuestoMax: data.presupuestoMax != null ? String(data.presupuestoMax) : '',
+          areaM2:         data.areaM2 != null ? String(data.areaM2) : '',
+        });
+      })
+      .catch(() => setError('No fue posible cargar la información del proyecto.'))
+      .finally(() => setLoadingProject(false));
+  }, [editando, proyectoId]);
 
   const set = (f) => (e) => {
     setTouched(p => ({ ...p, [f]: true }));
@@ -217,7 +221,7 @@ export default function PublicarProyecto() {
 
   /* Completitud de secciones */
   const proyectoDone  = !!form.tipoProyecto && !!form.titulo.trim() && form.descripcion.trim().length >= 20;
-  const ubicDone      = !!form.canton;
+  const ubicDone      = !!form.propiedadId;
   const detallesDone  = !!form.areaM2 || !!form.presupuestoMax;
 
   const sections = [
@@ -231,19 +235,24 @@ export default function PublicarProyecto() {
     titulo:       touched.titulo       && !form.titulo.trim()                  ? 'El nombre es requerido.'    : '',
     tipoProyecto: touched.tipoProyecto && !form.tipoProyecto                   ? 'Seleccioná un tipo.'        : '',
     descripcion:  touched.descripcion  && form.descripcion.trim().length < 20  ? 'Mínimo 20 caracteres.'      : '',
+    propiedadId:  touched.propiedadId  && !form.propiedadId                    ? 'Seleccioná una propiedad.'  : '',
+    areaM2:       touched.areaM2 && form.areaM2 !== '' && (!Number.isFinite(Number(form.areaM2)) || Number(form.areaM2) <= 0) ? 'El área debe ser mayor que cero.' : '',
+    presupuestoMax: touched.presupuestoMax && form.presupuestoMax !== '' && (!Number.isFinite(Number(form.presupuestoMax)) || Number(form.presupuestoMax) <= 0) ? 'El presupuesto debe ser mayor que cero.' : '',
   };
 
-  /* Acción principal del formulario — crea proyecto */
-  const handleCrearProyecto = async () => {
-    setTouched({ titulo: true, tipoProyecto: true, descripcion: true });
-    if (!form.tipoProyecto || !form.titulo.trim() || form.descripcion.trim().length < 20) {
-      scrollTo(proyectoRef);
+  /* Crea o actualiza la información general del proyecto. */
+  const handleGuardarInformacion = async () => {
+    setTouched({ titulo: true, tipoProyecto: true, descripcion: true, propiedadId: true, areaM2: true, presupuestoMax: true });
+    const areaInvalida = form.areaM2.trim() !== '' && (!Number.isFinite(Number(form.areaM2)) || Number(form.areaM2) <= 0);
+    const presupuestoInvalido = form.presupuestoMax.trim() !== '' && (!Number.isFinite(Number(form.presupuestoMax)) || Number(form.presupuestoMax) <= 0);
+    if (!form.tipoProyecto || !form.titulo.trim() || form.descripcion.trim().length < 20 || !form.propiedadId || areaInvalida || presupuestoInvalido) {
+      scrollTo(!form.propiedadId && proyectoDone ? ubicRef : proyectoRef);
       return;
     }
     setError('');
     setLoading(true);
     try {
-      const { data } = await proyectosApi.create({
+      const payload = {
         titulo:         form.titulo,
         propiedadId:    form.propiedadId,
         descripcion:    form.descripcion,
@@ -251,19 +260,40 @@ export default function PublicarProyecto() {
         canton:         form.canton    || null,
         distrito:       form.distrito  || null,
         provincia:      form.provincia || null,
-        presupuestoMax: form.presupuestoMax ? parseFloat(form.presupuestoMax) : null,
-        areaM2:         form.areaM2 ? parseFloat(form.areaM2) : null,
-      });
+        presupuestoMax: form.presupuestoMax.trim() !== '' ? Number(form.presupuestoMax) : null,
+        areaM2:         form.areaM2.trim() !== '' ? Number(form.areaM2) : null,
+      };
+      const { data } = editando
+        ? await proyectosApi.update(proyectoId, payload)
+        : await proyectosApi.create(payload);
       setProyecto(data);
       navigate('/mis-proyectos', {
-        state: { success: 'El proyecto se guardó como borrador. Puedes revisarlo y publicarlo cuando esté listo.' },
+        state: { success: editando
+          ? 'La información general del proyecto se actualizó correctamente.'
+          : 'La información general se guardó. Podés continuar completando el proyecto cuando querás.' },
       });
-    } catch {
-      setError('No fue posible crear el proyecto. Revisá tu conexión e intentá de nuevo.');
+    } catch (requestError) {
+      setError(requestError.response?.data?.message
+        ?? 'No fue posible guardar la información. Revisá los datos e intentá de nuevo.');
     } finally {
       setLoading(false);
     }
   };
+
+  if (loadingProject) return (
+    <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+      <CircularProgress size={28} />
+    </Box>
+  );
+
+  if (editando && !proyecto) return (
+    <Box sx={{ maxWidth: 720, mx: 'auto', py: 6 }}>
+      <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+      <Button variant="outlined" onClick={() => navigate('/mis-proyectos')}>
+        Volver a mis proyectos
+      </Button>
+    </Box>
+  );
 
   /* Acción final — publica el proyecto ya creado */
   const handlePublicar = async () => {
@@ -394,8 +424,8 @@ export default function PublicarProyecto() {
   return (
     <Box sx={{ maxWidth: 1060, mx: 'auto' }}>
       <PageHeader
-        title="Nuevo proyecto"
-        subtitle="Completá la información para recibir propuestas de constructores verificados."
+        title={editando ? 'Editar información del proyecto' : 'Información general del proyecto'}
+        subtitle="Completá los datos principales y la propiedad donde se realizará el trabajo."
       />
 
       {/* Layout 3 columnas */}
@@ -464,7 +494,7 @@ export default function PublicarProyecto() {
           </FormSection>
 
           {/* SECCIÓN: Ubicación */}
-          <FormSection title="Ubicación" badge="Opcional" sectionRef={ubicRef}>
+          <FormSection title="Propiedad donde se realizará" sectionRef={ubicRef}>
             <Grid container spacing={2.5}>
               <Grid size={{ xs: 12 }}>
                 <Autocomplete
@@ -473,12 +503,7 @@ export default function PublicarProyecto() {
                   getOptionLabel={(o) => o.nombre ?? ''}
                   value={propiedades.find(p => p.id === form.propiedadId) ?? null}
                   onChange={(_, val) => {
-                    setProvinciaId('');
-                    setCantonId('');
-                    setCantones([]);
-                    setDistritos([]);
-                    setLoadingCantones(false);
-                    setLoadingDistritos(false);
+                    setTouched(p => ({ ...p, propiedadId: true }));
                     setForm(p => ({
                       ...p,
                       propiedadId: val?.id ?? null,
@@ -490,8 +515,9 @@ export default function PublicarProyecto() {
                   isOptionEqualToValue={(o, v) => o.id === v.id}
                   noOptionsText="No tenés propiedades registradas"
                   renderInput={(params) => (
-                    <TextField {...params} label="Usar una propiedad guardada"
-                      helperText="La ubicación se completará automáticamente" />
+                    <TextField {...params} required label="Propiedad"
+                      error={!!err.propiedadId}
+                      helperText={err.propiedadId || 'La ubicación se completará automáticamente'} />
                   )}
                 />
               </Grid>
@@ -507,74 +533,21 @@ export default function PublicarProyecto() {
                   </Alert>
                 </Grid>
               )}
-              {!form.propiedadId && <>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <Autocomplete
-                  fullWidth
-                  options={provincias}
-                  getOptionLabel={(o) => (typeof o === 'string' ? o : o.name)}
-                  value={provincias.find(p => p.id === provinciaId) ?? null}
-                  onChange={(_, val) => {
-                    setProvinciaId(val?.id ?? '');
-                    setCantonId('');
-                    setCantones([]);
-                    setDistritos([]);
-                    setLoadingCantones(!!val);
-                    setLoadingDistritos(false);
-                    setForm(p => ({ ...p, provincia: val?.name ?? '', canton: '', distrito: '' }));
-                  }}
-                  isOptionEqualToValue={(o, v) => o.id === v.id}
-                  loading={provincias.length === 0}
-                  loadingText="Cargando…"
-                  noOptionsText="Sin resultados"
-                  renderInput={(params) => (
-                    <TextField {...params} label="Provincia" />
-                  )}
-                />
+              {!form.propiedadId && propiedades.length === 0 && (
+                <Grid size={{ xs: 12 }}>
+                  <Alert severity="warning">
+                    Primero registrá una propiedad para asociarla al proyecto.
+                  </Alert>
+                </Grid>
+              )}
+              <Grid size={{ xs: 12 }}>
+                <Button size="small" variant="outlined" onClick={() => {
+                  sessionStorage.setItem('capp26-project-draft', JSON.stringify(form));
+                  navigate('/propiedades');
+                }}>
+                  {propiedades.length > 0 ? 'Agregar otra propiedad' : 'Registrar propiedad'}
+                </Button>
               </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <Autocomplete
-                  fullWidth
-                  options={cantones}
-                  getOptionLabel={(o) => (typeof o === 'string' ? o : o.name)}
-                  value={cantones.find(c => c.id === cantonId) ?? null}
-                  onChange={(_, val) => {
-                    setCantonId(val?.id ?? '');
-                    setDistritos([]);
-                    setLoadingDistritos(!!val);
-                    setForm(p => ({ ...p, canton: val?.name ?? '', distrito: '' }));
-                  }}
-                  disabled={!provinciaId}
-                  loading={loadingCantones}
-                  loadingText="Cargando…"
-                  noOptionsText="Sin resultados"
-                  isOptionEqualToValue={(o, v) => o.id === v.id}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Cantón" />
-                  )}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <Autocomplete
-                  fullWidth
-                  options={distritos}
-                  getOptionLabel={(o) => (typeof o === 'string' ? o : o.name)}
-                  value={distritos.find(d => d.name === form.distrito) ?? null}
-                  onChange={(_, val) => {
-                    setForm(p => ({ ...p, distrito: val?.name ?? '' }));
-                  }}
-                  disabled={!cantonId}
-                  loading={loadingDistritos}
-                  loadingText="Cargando…"
-                  noOptionsText="Sin resultados"
-                  isOptionEqualToValue={(o, v) => o.id === v.id}
-                  renderInput={(params) => (
-                    <TextField {...params} label="Distrito"
-                      helperText="Ayuda a los constructores de tu zona a encontrar tu proyecto" />
-                  )}
-                />
-              </Grid>
-              </>}
             </Grid>
           </FormSection>
 
@@ -584,17 +557,20 @@ export default function PublicarProyecto() {
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField fullWidth label="Área aproximada"
                   value={form.areaM2} onChange={set('areaM2')} type="number"
-                  slotProps={{ input: { endAdornment: <InputAdornment position="end">m²</InputAdornment> } }}
-                  helperText="Metros cuadrados del área de trabajo" />
+                  error={!!err.areaM2} onBlur={touch('areaM2')}
+                  helperText={err.areaM2 || 'Metros cuadrados del área de trabajo'}
+                  slotProps={{ htmlInput: { min: 0.01, step: 'any' }, input: { endAdornment: <InputAdornment position="end">m²</InputAdornment> } }}
+                  />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField fullWidth label="Presupuesto máximo"
                   value={form.presupuestoMax} onChange={set('presupuestoMax')} type="number"
-                  slotProps={{ input: { startAdornment: <InputAdornment position="start">₡</InputAdornment> } }}
+                  error={!!err.presupuestoMax} onBlur={touch('presupuestoMax')}
+                  slotProps={{ htmlInput: { min: 0.01, step: 'any' }, input: { startAdornment: <InputAdornment position="start">₡</InputAdornment> } }}
                   helperText={
-                    form.presupuestoMax
+                    err.presupuestoMax || (form.presupuestoMax
                       ? `₡ ${parseFloat(form.presupuestoMax).toLocaleString('es-CR')} · Podés ajustarlo luego`
-                      : 'Podés dejarlo vacío si aún no contás con un monto definido'
+                      : 'Podés dejarlo vacío si aún no contás con un monto definido')
                   } />
               </Grid>
             </Grid>
@@ -614,17 +590,12 @@ export default function PublicarProyecto() {
             <Button onClick={() => navigate('/mis-proyectos')} sx={{ color: 'text.secondary' }}>
               Cancelar
             </Button>
-            <Button variant="outlined" startIcon={<BookmarkIcon sx={{ fontSize: 15 }} />}
-              onClick={() => navigate('/mis-proyectos', { state: { success: 'Proyecto guardado como borrador.' } })}
-              disabled={loading} sx={{ whiteSpace: 'nowrap' }}>
-              Guardar borrador
-            </Button>
-            <Button variant="contained" startIcon={<AddIcon sx={{ fontSize: 15 }} />}
-              onClick={handleCrearProyecto} disabled={loading}
+            <Button variant="contained" startIcon={<SaveOutlinedIcon sx={{ fontSize: 15 }} />}
+              onClick={handleGuardarInformacion} disabled={loading || loadingProject}
               sx={{ boxShadow: 'none' }}>
               {loading
-                ? <><CircularProgress size={14} color="inherit" sx={{ mr: 1 }} />Creando proyecto…</>
-                : 'Crear proyecto'}
+                ? <><CircularProgress size={14} color="inherit" sx={{ mr: 1 }} />Guardando…</>
+                : 'Guardar información'}
             </Button>
           </Box>
         </Box>

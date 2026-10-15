@@ -78,19 +78,19 @@ public class ProyectosController : ControllerBase
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-        if (!Enum.TryParse<TipoProyecto>(req.TipoProyecto, out var tipo))
-            return BadRequest(new { message = "Tipo de proyecto inválido." });
+        var validacion = ValidarInformacionGeneral(req, out var tipo);
+        if (validacion is not null) return validacion;
 
         var propiedad = await GetPropiedadDelCliente(req.PropiedadId, userId);
-        if (req.PropiedadId.HasValue && propiedad is null)
+        if (propiedad is null)
             return BadRequest(new { message = "La propiedad seleccionada no existe o no pertenece al cliente." });
 
         var proyecto = new Proyecto
         {
             ClienteId        = userId,
             PropiedadId      = propiedad?.Id,
-            Titulo           = req.Titulo,
-            Descripcion      = req.Descripcion,
+            Titulo           = req.Titulo.Trim(),
+            Descripcion      = req.Descripcion.Trim(),
             TipoProyecto     = tipo,
             Estado           = EstadoProyecto.Borrador,
             Canton           = propiedad?.Canton ?? req.Canton,
@@ -118,15 +118,15 @@ public class ProyectosController : ControllerBase
         if (proyecto is null)  return NotFound();
         if (proyecto.ClienteId != userId) return Forbid();
 
-        if (!Enum.TryParse<TipoProyecto>(req.TipoProyecto, out var tipo))
-            return BadRequest(new { message = "Tipo de proyecto inválido." });
+        var validacion = ValidarInformacionGeneral(req, out var tipo);
+        if (validacion is not null) return validacion;
 
         var propiedad = await GetPropiedadDelCliente(req.PropiedadId, userId);
-        if (req.PropiedadId.HasValue && propiedad is null)
+        if (propiedad is null)
             return BadRequest(new { message = "La propiedad seleccionada no existe o no pertenece al cliente." });
 
-        proyecto.Titulo        = req.Titulo;
-        proyecto.Descripcion   = req.Descripcion;
+        proyecto.Titulo        = req.Titulo.Trim();
+        proyecto.Descripcion   = req.Descripcion.Trim();
         proyecto.TipoProyecto  = tipo;
         proyecto.PropiedadId   = propiedad?.Id;
         proyecto.Canton        = propiedad?.Canton ?? req.Canton;
@@ -241,6 +241,38 @@ public class ProyectosController : ControllerBase
         if (!propiedadId.HasValue) return null;
         var propiedad = await _uow.Propiedades.GetByIdAsync(propiedadId.Value);
         return propiedad?.ClienteId == clienteId ? propiedad : null;
+    }
+
+    private BadRequestObjectResult? ValidarInformacionGeneral(
+        ProyectoRequest req,
+        out TipoProyecto tipo)
+    {
+        tipo = default;
+        var errores = new Dictionary<string, string>();
+
+        if (string.IsNullOrWhiteSpace(req.Titulo))
+            errores["titulo"] = "El nombre del proyecto es obligatorio.";
+
+        if (string.IsNullOrWhiteSpace(req.TipoProyecto) ||
+            !Enum.TryParse(req.TipoProyecto, ignoreCase: true, out tipo) ||
+            !Enum.IsDefined(tipo))
+            errores["tipoProyecto"] = "Seleccioná un tipo de trabajo válido.";
+
+        if (string.IsNullOrWhiteSpace(req.Descripcion) || req.Descripcion.Trim().Length < 20)
+            errores["descripcion"] = "La descripción debe tener al menos 20 caracteres.";
+
+        if (!req.PropiedadId.HasValue)
+            errores["propiedadId"] = "Seleccioná la propiedad donde se realizará el proyecto.";
+
+        if (req.AreaM2.HasValue && req.AreaM2.Value <= 0)
+            errores["areaM2"] = "El área debe ser mayor que cero.";
+
+        if (req.PresupuestoMax.HasValue && req.PresupuestoMax.Value <= 0)
+            errores["presupuestoMax"] = "El presupuesto debe ser mayor que cero.";
+
+        return errores.Count == 0
+            ? null
+            : BadRequest(new { message = "Completá la información obligatoria.", errors = errores });
     }
 }
 
