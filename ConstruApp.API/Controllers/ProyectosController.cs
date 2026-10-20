@@ -88,14 +88,6 @@ public class ProyectosController : ControllerBase
         var proyecto = new Proyecto
         {
             ClienteId        = userId,
-            PropiedadId      = propiedad?.Id,
-            Titulo           = req.Titulo.Trim(),
-            Descripcion      = req.Descripcion.Trim(),
-            TipoProyecto     = tipo,
-            Estado           = EstadoProyecto.Borrador,
-            Canton           = propiedad?.Canton ?? req.Canton,
-            Provincia        = propiedad?.Provincia ?? req.Provincia,
-            Distrito         = propiedad?.Distrito ?? req.Distrito,
             PresupuestoMax   = req.PresupuestoMax,
             AreaM2           = req.AreaM2,
             FechaPublicacion = DateTime.UtcNow,
@@ -118,20 +110,6 @@ public class ProyectosController : ControllerBase
         if (proyecto is null)  return NotFound();
         if (proyecto.ClienteId != userId) return Forbid();
 
-        var validacion = ValidarInformacionGeneral(req, out var tipo);
-        if (validacion is not null) return validacion;
-
-        var propiedad = await GetPropiedadDelCliente(req.PropiedadId, userId);
-        if (propiedad is null)
-            return BadRequest(new { message = "La propiedad seleccionada no existe o no pertenece al cliente." });
-
-        proyecto.Titulo        = req.Titulo.Trim();
-        proyecto.Descripcion   = req.Descripcion.Trim();
-        proyecto.TipoProyecto  = tipo;
-        proyecto.PropiedadId   = propiedad?.Id;
-        proyecto.Canton        = propiedad?.Canton ?? req.Canton;
-        proyecto.Provincia     = propiedad?.Provincia ?? req.Provincia;
-        proyecto.Distrito      = propiedad?.Distrito ?? req.Distrito;
         proyecto.PresupuestoMax = req.PresupuestoMax;
         proyecto.AreaM2        = req.AreaM2;
         proyecto.FechaInicio   = req.FechaInicio;
@@ -221,59 +199,18 @@ public class ProyectosController : ControllerBase
     {
         p.Id,
         p.ClienteId,
-        p.PropiedadId,
         p.Titulo,
         p.Descripcion,
         TipoProyecto   = p.TipoProyecto.ToString(),
         Estado         = p.Estado.ToString(),
         p.Canton,
         p.Provincia,
-        p.Distrito,
         p.PresupuestoMax,
         p.AreaM2,
         p.FechaPublicacion,
         p.FechaInicio,
         p.FechaFin,
     };
-
-    private async Task<Propiedad?> GetPropiedadDelCliente(int? propiedadId, int clienteId)
-    {
-        if (!propiedadId.HasValue) return null;
-        var propiedad = await _uow.Propiedades.GetByIdAsync(propiedadId.Value);
-        return propiedad?.ClienteId == clienteId ? propiedad : null;
-    }
-
-    private BadRequestObjectResult? ValidarInformacionGeneral(
-        ProyectoRequest req,
-        out TipoProyecto tipo)
-    {
-        tipo = default;
-        var errores = new Dictionary<string, string>();
-
-        if (string.IsNullOrWhiteSpace(req.Titulo))
-            errores["titulo"] = "El nombre del proyecto es obligatorio.";
-
-        if (string.IsNullOrWhiteSpace(req.TipoProyecto) ||
-            !Enum.TryParse(req.TipoProyecto, ignoreCase: true, out tipo) ||
-            !Enum.IsDefined(tipo))
-            errores["tipoProyecto"] = "Seleccioná un tipo de trabajo válido.";
-
-        if (string.IsNullOrWhiteSpace(req.Descripcion) || req.Descripcion.Trim().Length < 20)
-            errores["descripcion"] = "La descripción debe tener al menos 20 caracteres.";
-
-        if (!req.PropiedadId.HasValue)
-            errores["propiedadId"] = "Seleccioná la propiedad donde se realizará el proyecto.";
-
-        if (req.AreaM2.HasValue && req.AreaM2.Value <= 0)
-            errores["areaM2"] = "El área debe ser mayor que cero.";
-
-        if (req.PresupuestoMax.HasValue && req.PresupuestoMax.Value <= 0)
-            errores["presupuestoMax"] = "El presupuesto debe ser mayor que cero.";
-
-        return errores.Count == 0
-            ? null
-            : BadRequest(new { message = "Completá la información obligatoria.", errors = errores });
-    }
 }
 
 public record ProyectoRequest(
@@ -282,12 +219,6 @@ public record ProyectoRequest(
     string    TipoProyecto,
     string?   Canton,
     string?   Provincia,
-    string?   Distrito,
-    decimal?  PresupuestoMax,
-    decimal?  AreaM2,
-    DateTime? FechaInicio,
-    DateTime? FechaFin,
-    int?      PropiedadId
 );
 
 public record CambiarEstadoRequest(string Estado);
