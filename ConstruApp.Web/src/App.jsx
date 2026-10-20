@@ -24,6 +24,7 @@ import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined
 import HandymanOutlinedIcon     from '@mui/icons-material/HandymanOutlined';
 import HomeRepairServiceOutlinedIcon from '@mui/icons-material/HomeRepairServiceOutlined';
 import PeopleOutlinedIcon       from '@mui/icons-material/PeopleOutlined';
+import HomeWorkOutlinedIcon     from '@mui/icons-material/HomeWorkOutlined';
 
 // ── Lazy imports ──────────────────────────────────────────────────────────────
 const Dashboard          = lazy(() => import('./pages/dashboard/Dashboard'));
@@ -319,7 +320,6 @@ function AppRoutes() {
 
         {/* Cliente */}
         <Route path="/mis-proyectos"           element={<RoleGuard roles={['Cliente','Admin']}><MisProyectos /></RoleGuard>} />
-        <Route path="/publicar"                element={<RoleGuard roles={['Cliente','Admin']}><PublicarProyecto /></RoleGuard>} />
         <Route path="/marketplace"             element={<RoleGuard roles={['Cliente','Admin','Constructor']}><Marketplace /></RoleGuard>} />
         <Route path="/cotizaciones-ia"         element={<RoleGuard roles={['Cliente','Admin']}><CotizacionesIA /></RoleGuard>} />
         <Route path="/cronograma"              element={<RoleGuard roles={['Cliente','Admin']}><Cronograma /></RoleGuard>} />

@@ -78,18 +78,16 @@ public class ProyectosController : ControllerBase
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-        if (!Enum.TryParse<TipoProyecto>(req.TipoProyecto, out var tipo))
-            return BadRequest(new { message = "Tipo de proyecto inválido." });
+        var validacion = ValidarInformacionGeneral(req, out var tipo);
+        if (validacion is not null) return validacion;
+
+        var propiedad = await GetPropiedadDelCliente(req.PropiedadId, userId);
+        if (propiedad is null)
+            return BadRequest(new { message = "La propiedad seleccionada no existe o no pertenece al cliente." });
 
         var proyecto = new Proyecto
         {
             ClienteId        = userId,
-            Titulo           = req.Titulo,
-            Descripcion      = req.Descripcion,
-            TipoProyecto     = tipo,
-            Estado           = EstadoProyecto.Borrador,
-            Canton           = req.Canton,
-            Provincia        = req.Provincia,
             PresupuestoMax   = req.PresupuestoMax,
             AreaM2           = req.AreaM2,
             FechaPublicacion = DateTime.UtcNow,
@@ -112,14 +110,6 @@ public class ProyectosController : ControllerBase
         if (proyecto is null)  return NotFound();
         if (proyecto.ClienteId != userId) return Forbid();
 
-        if (!Enum.TryParse<TipoProyecto>(req.TipoProyecto, out var tipo))
-            return BadRequest(new { message = "Tipo de proyecto inválido." });
-
-        proyecto.Titulo        = req.Titulo;
-        proyecto.Descripcion   = req.Descripcion;
-        proyecto.TipoProyecto  = tipo;
-        proyecto.Canton        = req.Canton;
-        proyecto.Provincia     = req.Provincia;
         proyecto.PresupuestoMax = req.PresupuestoMax;
         proyecto.AreaM2        = req.AreaM2;
         proyecto.FechaInicio   = req.FechaInicio;
@@ -229,10 +219,6 @@ public record ProyectoRequest(
     string    TipoProyecto,
     string?   Canton,
     string?   Provincia,
-    decimal?  PresupuestoMax,
-    decimal?  AreaM2,
-    DateTime? FechaInicio,
-    DateTime? FechaFin
 );
 
 public record CambiarEstadoRequest(string Estado);

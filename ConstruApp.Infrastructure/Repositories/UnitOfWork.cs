@@ -9,6 +9,8 @@ public class UnitOfWork : IUnitOfWork
     private readonly AppDbContext _context;
 
     public IRepository<Proyecto>          Proyectos           { get; }
+    public IRepository<Propiedad>         Propiedades         { get; }
+    public IRepository<FotoPropiedad>     FotosPropiedad      { get; }
     public IRepository<ArchivoProyecto>   Archivos            { get; }
     public IRepository<CotizacionIA>      CotizacionesIA      { get; }
     public IRepository<LineaCotizacionIA> LineasCotizacion    { get; }
@@ -45,6 +47,8 @@ public class UnitOfWork : IUnitOfWork
     {
         _context              = context;
         Proyectos             = new Repository<Proyecto>(context);
+        Propiedades           = new Repository<Propiedad>(context);
+        FotosPropiedad        = new Repository<FotoPropiedad>(context);
         Archivos              = new Repository<ArchivoProyecto>(context);
         CotizacionesIA        = new Repository<CotizacionIA>(context);
         LineasCotizacion      = new Repository<LineaCotizacionIA>(context);

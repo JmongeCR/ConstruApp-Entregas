@@ -10,7 +10,9 @@ import {
 } from '@mui/material';
 import AddIcon           from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
+import EditOutlinedIcon   from '@mui/icons-material/EditOutlined';
 import AutoAwesomeIcon   from '@mui/icons-material/AutoAwesome';
+import HomeWorkOutlinedIcon from '@mui/icons-material/HomeWorkOutlined';
 import PublishIcon       from '@mui/icons-material/Publish';
 import SendIcon          from '@mui/icons-material/Send';
 import ConstructionIcon  from '@mui/icons-material/Construction';
@@ -60,7 +62,9 @@ export default function MisProyectos() {
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroTipo,   setFiltroTipo]   = useState('');
   const [sortBy, setSortBy]         = useState('fecha_desc');
-  const [toast, setToast]           = useState({ open: false, msg: '', severity: 'success' });
+  const [toast, setToast]           = useState(() => location.state?.success
+    ? { open: true, msg: location.state.success, severity: 'success' }
+    : { open: false, msg: '', severity: 'success' });
   const [confirmDel, setConfirmDel] = useState({ open: false, id: null });
 
   const notify = (msg, severity = 'success') => setToast({ open: true, msg, severity });
@@ -71,7 +75,6 @@ export default function MisProyectos() {
       navigate('/mis-clientes', { replace: true });
       return;
     }
-    if (location.state?.success) notify(location.state.success);
     proyectosApi.getMios().then(r => setProyectos(r.data)).catch(() => {}).finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario?.rol]);
@@ -144,9 +147,14 @@ export default function MisProyectos() {
             {loading ? '...' : `${proyectos.length} proyectos en total`}
           </Typography>
         </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/publicar')}>
-          Nuevo proyecto
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <Button variant="outlined" startIcon={<HomeWorkOutlinedIcon />} onClick={() => navigate('/propiedades')}>
+            Mis propiedades
+          </Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/publicar')}>
+            Nuevo proyecto
+          </Button>
+        </Box>
       </Box>
 
       {/* ── Chips rápidos de estado ── */}
@@ -355,7 +363,14 @@ export default function MisProyectos() {
                               <SendIcon sx={{ fontSize: 16 }} />
                             </IconButton>
                           </Tooltip>
-                          {p.estado === 'Borrador' && (
+                          {String(p.estado).toLowerCase() === 'borrador' && (
+                            <Button size="small" startIcon={<EditOutlinedIcon sx={{ fontSize: 16 }} />}
+                              onClick={() => navigate(`/publicar/${p.id}`)}
+                              sx={{ minWidth: 0, px: 0.75, color: '#2563EB', fontSize: 12, textTransform: 'none' }}>
+                              Editar
+                            </Button>
+                          )}
+                          {String(p.estado).toLowerCase() === 'borrador' && (
                             <Tooltip title="Publicar">
                               <IconButton size="small" onClick={() => handlePublicar(p.id)}
                                 sx={{ color: '#6B7280', '&:hover': { color: '#16A34A', bgcolor: '#F0FDF4' } }}>

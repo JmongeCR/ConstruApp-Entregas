@@ -11,6 +11,8 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
 
     // ── DbSets ────────────────────────────────────────────────────────────────
     public DbSet<Proyecto>          Proyectos           => Set<Proyecto>();
+    public DbSet<Propiedad>         Propiedades         => Set<Propiedad>();
+    public DbSet<FotoPropiedad>     FotosPropiedad      => Set<FotoPropiedad>();
     public DbSet<ArchivoProyecto>   Archivos            => Set<ArchivoProyecto>();
     public DbSet<CotizacionIA>      CotizacionesIA      => Set<CotizacionIA>();
     public DbSet<LineaCotizacionIA> LineasCotizacion    => Set<LineaCotizacionIA>();
@@ -84,6 +86,7 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
             e.Property(p => p.Estado).HasConversion<string>().HasMaxLength(30);
             e.Property(p => p.Canton).HasMaxLength(100);
             e.Property(p => p.Provincia).HasMaxLength(100);
+            e.Property(p => p.Distrito).HasMaxLength(100);
             e.Property(p => p.PresupuestoMax).HasColumnType("decimal(18,2)");
             e.Property(p => p.AreaM2).HasColumnType("decimal(10,2)");
 
@@ -91,6 +94,41 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
              .WithMany(u => u.Proyectos)
              .HasForeignKey(p => p.ClienteId)
              .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(p => p.Propiedad)
+             .WithMany(p => p.Proyectos)
+             .HasForeignKey(p => p.PropiedadId)
+             .OnDelete(DeleteBehavior.Restrict)
+             .IsRequired(false);
+        });
+
+        // ── Propiedad ─────────────────────────────────────────────────────────
+        builder.Entity<Propiedad>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.Property(p => p.Nombre).HasMaxLength(150).IsRequired();
+            e.Property(p => p.Direccion).HasMaxLength(300).IsRequired();
+            e.Property(p => p.Provincia).HasMaxLength(100).IsRequired();
+            e.Property(p => p.Canton).HasMaxLength(100).IsRequired();
+            e.Property(p => p.Distrito).HasMaxLength(100).IsRequired();
+            e.Property(p => p.Caracteristicas).HasMaxLength(1500);
+
+            e.HasOne(p => p.Cliente)
+             .WithMany(u => u.Propiedades)
+             .HasForeignKey(p => p.ClienteId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<FotoPropiedad>(e =>
+        {
+            e.HasKey(f => f.Id);
+            e.Property(f => f.Url).HasMaxLength(500).IsRequired();
+            e.Property(f => f.NombreArchivo).HasMaxLength(200).IsRequired();
+
+            e.HasOne(f => f.Propiedad)
+             .WithMany(p => p.Fotos)
+             .HasForeignKey(f => f.PropiedadId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         // ── ArchivoProyecto ───────────────────────────────────────────────────
