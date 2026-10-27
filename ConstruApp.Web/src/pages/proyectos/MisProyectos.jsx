@@ -12,6 +12,7 @@ import AddIcon           from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import EditOutlinedIcon   from '@mui/icons-material/EditOutlined';
 import AutoAwesomeIcon   from '@mui/icons-material/AutoAwesome';
+import PriceChangeOutlinedIcon from '@mui/icons-material/PriceChangeOutlined';
 import HomeWorkOutlinedIcon from '@mui/icons-material/HomeWorkOutlined';
 import PublishIcon       from '@mui/icons-material/Publish';
 import SendIcon          from '@mui/icons-material/Send';
@@ -25,7 +26,7 @@ import { useAuth } from '../../context/AuthContext';
 const ESTADO = {
   Borrador:     { bg: '#F1F5F9', color: '#64748B', label: 'Borrador'      },
   Publicado:    { bg: '#DCFCE7', color: '#166534', label: 'Publicado'     },
-  EnPropuestas: { bg: '#FEF9C3', color: '#854D0E', label: 'En propuestas' },
+  EnPropuestas: { bg: '#FEF9C3', color: '#854D0E', label: 'En proceso de cotización' },
   EnCurso:      { bg: '#DBEAFE', color: '#1D4ED8', label: 'En ejecución'  },
   Completado:   { bg: '#D1FAE5', color: '#065F46', label: 'Completado'    },
   Cancelado:    { bg: '#FEE2E2', color: '#991B1B', label: 'Cancelado'     },
@@ -57,6 +58,7 @@ export default function MisProyectos() {
   const location  = useLocation();
   const { esRol, usuario } = useAuth();
   const [proyectos, setProyectos]   = useState([]);
+  const [enviando, setEnviando] = useState([]);
   const [loading, setLoading]       = useState(true);
   const [buscar, setBuscar]         = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
@@ -79,12 +81,18 @@ export default function MisProyectos() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario?.rol]);
 
-  const handlePublicar = async (id) => {
+  const handleEnviarACotizacion = async (id) => {
+    setEnviando(ids => [...ids, id]);
     try {
-      await proyectosApi.publicar(id);
-      setProyectos(p => p.map(pr => pr.id === id ? { ...pr, estado: 'Publicado' } : pr));
-      notify('Proyecto publicado. Los constructores ya pueden verlo.');
-    } catch { notify('Error al publicar.', 'error'); }
+      const { data } = await proyectosApi.enviarACotizacion(id);
+      setProyectos(p => p.map(pr => pr.id === id ? data : pr));
+      notify('Proyecto enviado a cotización. Los constructores ya pueden verlo.');
+    } catch (error) {
+      const errors = error.response?.data?.errors;
+      notify(errors ? Object.values(errors).join(' ') : error.response?.data?.message ?? 'Error al enviar el proyecto a cotización.', 'error');
+    } finally {
+      setEnviando(ids => ids.filter(actual => actual !== id));
+    }
   };
 
   const handleDelete = async () => {
@@ -312,8 +320,11 @@ export default function MisProyectos() {
               <TableBody>
                 {proyectosFiltrados.map(p => {
                   const est = ESTADO[p.estado] ?? ESTADO.Borrador;
-                  const fecha = p.fechaPublicacion
-                    ? new Date(p.fechaPublicacion).toLocaleDateString('es-CR', { day: 'numeric', month: 'short', year: 'numeric' })
+                  const fechaProyecto = p.estado === 'EnPropuestas'
+                    ? (p.fechaEnvioCotizacion ?? p.fechaPublicacion)
+                    : p.fechaPublicacion;
+                  const fecha = fechaProyecto
+                    ? new Date(fechaProyecto).toLocaleDateString('es-CR', { day: 'numeric', month: 'short', year: 'numeric' })
                     : p.fechaCreacion
                     ? new Date(p.fechaCreacion).toLocaleDateString('es-CR', { day: 'numeric', month: 'short', year: 'numeric' })
                     : '—';
@@ -324,7 +335,7 @@ export default function MisProyectos() {
                         <Typography fontSize={13.5} fontWeight={500} color="text.primary" sx={{
                           display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                         }}>
-                          {p.titulo}
+                          {p.titulo || 'Borrador sin nombre'}
                         </Typography>
                         {p.presupuestoMax && (
                           <Typography fontSize={11.5} color="text.secondary">
@@ -351,6 +362,12 @@ export default function MisProyectos() {
                       </TableCell>
                       <TableCell align="right">
                         <Box sx={{ display: 'flex', gap: 0.25, justifyContent: 'flex-end' }}>
+                          <Tooltip title="Sugerir precios">
+                            <IconButton size="small" aria-label="Sugerir precios" onClick={() => navigate(`/proyectos/${p.id}/sugerencia-precios`)}
+                              sx={{ color: '#6B7280', '&:hover': { color: '#2563EB', bgcolor: '#EFF6FF' } }}>
+                              <PriceChangeOutlinedIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
                           <Tooltip title="Cotización IA">
                             <IconButton size="small" onClick={() => navigate(`/cotizacion/${p.id}`)}
                               sx={{ color: '#6B7280', '&:hover': { color: '#2563EB', bgcolor: '#EFF6FF' } }}>
@@ -371,8 +388,8 @@ export default function MisProyectos() {
                             </Button>
                           )}
                           {String(p.estado).toLowerCase() === 'borrador' && (
-                            <Tooltip title="Publicar">
-                              <IconButton size="small" onClick={() => handlePublicar(p.id)}
+                            <Tooltip title="Enviar para cotización">
+                              <IconButton size="small" disabled={enviando.includes(p.id)} onClick={() => handleEnviarACotizacion(p.id)}
                                 sx={{ color: '#6B7280', '&:hover': { color: '#16A34A', bgcolor: '#F0FDF4' } }}>
                                 <PublishIcon sx={{ fontSize: 16 }} />
                               </IconButton>
