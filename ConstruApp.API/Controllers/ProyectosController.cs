@@ -146,17 +146,8 @@ public class ProyectosController : ControllerBase
     [HttpPut("{id:int}/publicar")]
     public async Task<IActionResult> Publicar(int id)
     {
-        var userId   = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var proyecto = await _uow.Proyectos.GetByIdAsync(id);
-        if (proyecto is null)  return NotFound();
-        if (proyecto.ClienteId != userId) return Forbid();
-
-        proyecto.Estado           = EstadoProyecto.Publicado;
-        proyecto.FechaPublicacion = DateTime.UtcNow;
-
-        await _uow.Proyectos.UpdateAsync(proyecto);
-        await _uow.SaveChangesAsync();
-        return Ok(MapDto(proyecto));
+        // Compatibilidad con clientes antiguos: publicar ahora significa enviar a cotización.
+        return await EnviarACotizacion(id);
     }
 
     // PUT api/proyectos/{id}/estado
@@ -232,9 +223,57 @@ public class ProyectosController : ControllerBase
         p.PresupuestoMax,
         p.AreaM2,
         p.FechaPublicacion,
+        p.FechaEnvioCotizacion,
         p.FechaInicio,
         p.FechaFin,
     };
+
+    // PUT api/proyectos/{id}/enviar-cotizacion
+    [HttpPut("{id:int}/enviar-cotizacion")]
+    public async Task<IActionResult> EnviarACotizacion(int id)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var proyecto = await _uow.Proyectos.GetByIdAsync(id);
+        if (proyecto is null) return NotFound();
+        if (proyecto.ClienteId != userId) return Forbid();
+        if (proyecto.Estado != EstadoProyecto.Borrador)
+            return BadRequest(new { message = "Solo se pueden enviar a cotización proyectos en borrador." });
+
+        var errores = new Dictionary<string, string>();
+        if (string.IsNullOrWhiteSpace(proyecto.Titulo))
+            errores["titulo"] = "El nombre del proyecto es obligatorio.";
+        if (string.IsNullOrWhiteSpace(proyecto.Descripcion) || proyecto.Descripcion.Trim().Length < 20)
+            errores["descripcion"] = "La descripción debe tener al menos 20 caracteres.";
+        if (!Enum.IsDefined(proyecto.TipoProyecto))
+            errores["tipoProyecto"] = "Seleccioná un tipo de trabajo válido.";
+        if (!proyecto.PropiedadId.HasValue)
+            errores["propiedadId"] = "Seleccioná la propiedad donde se realizará el proyecto.";
+        else
+        {
+            var propiedad = await _uow.Propiedades.GetByIdAsync(proyecto.PropiedadId.Value);
+            if (propiedad is null || propiedad.ClienteId != userId)
+                errores["propiedadId"] = "La propiedad del proyecto ya no está disponible.";
+        }
+        if (proyecto.AreaM2.HasValue && proyecto.AreaM2.Value <= 0)
+            errores["areaM2"] = "El área debe ser mayor que cero.";
+        if (proyecto.PresupuestoMax.HasValue && proyecto.PresupuestoMax.Value <= 0)
+            errores["presupuestoMax"] = "El presupuesto debe ser mayor que cero.";
+        if (proyecto.FechaInicio.HasValue && proyecto.FechaFin.HasValue && proyecto.FechaFin < proyecto.FechaInicio)
+            errores["fechaFin"] = "La fecha de finalización no puede ser anterior a la fecha de inicio.";
+
+        if (errores.Count > 0)
+            return BadRequest(new { message = "Completá o corregí la información antes de enviar el proyecto.", errors = errores });
+
+        proyecto.Estado = EstadoProyecto.EnPropuestas;
+        proyecto.FechaEnvioCotizacion = DateTime.UtcNow;
+        proyecto.FechaPublicacion = proyecto.FechaEnvioCotizacion.Value;
+        await _uow.Proyectos.UpdateAsync(proyecto);
+        await _uow.SaveChangesAsync();
+        await _auditoria.RegistrarAsync(userId, User.FindFirstValue("nombre") ?? "",
+            "Enviar a cotización", "Proyectos", id.ToString(),
+            "Proyecto enviado de borrador a proceso de cotización.");
+        return Ok(MapDto(proyecto));
+    }
 
     private async Task<Propiedad?> GetPropiedadDelCliente(int? propiedadId, int clienteId)
     {

@@ -299,10 +299,11 @@ export default function PublicarProyecto() {
   const handlePublicar = async () => {
     setLoading(true);
     try {
-      await proyectosApi.publicar(proyecto.id);
-      navigate('/mis-proyectos', { state: { success: 'Proyecto publicado. Los constructores ya pueden verlo.' } });
-    } catch {
-      setError('Error al publicar el proyecto.');
+      await proyectosApi.enviarACotizacion(proyecto.id);
+      navigate('/mis-proyectos', { state: { success: 'Proyecto enviado a cotización. Los constructores ya pueden verlo.' } });
+    } catch (requestError) {
+      const errors = requestError.response?.data?.errors;
+      setError(errors ? Object.values(errors).join(' ') : requestError.response?.data?.message ?? 'Error al enviar el proyecto a cotización.');
     } finally {
       setLoading(false);
     }
@@ -399,14 +400,14 @@ export default function PublicarProyecto() {
             ¿Listo para recibir propuestas?
           </Typography>
           <Typography fontSize={13} color="text.secondary">
-            Al publicar, constructores verificados podrán ver tu proyecto y enviarte cotizaciones.
+            Al enviar, constructores verificados podrán ver tu proyecto y enviarte cotizaciones.
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0 }}>
           <Button variant="contained" startIcon={<PublishIcon />}
             onClick={handlePublicar} disabled={loading}
             sx={{ whiteSpace: 'nowrap', boxShadow: 'none' }}>
-            {loading ? <CircularProgress size={16} color="inherit" /> : 'Publicar proyecto'}
+            {loading ? <CircularProgress size={16} color="inherit" /> : 'Enviar para cotización'}
           </Button>
           <Button variant="outlined" startIcon={<BookmarkIcon />}
             onClick={() => navigate('/mis-proyectos', { state: { success: 'Proyecto guardado como borrador.' } })}
