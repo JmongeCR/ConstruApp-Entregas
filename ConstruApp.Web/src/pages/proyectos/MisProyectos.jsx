@@ -13,6 +13,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import EditOutlinedIcon   from '@mui/icons-material/EditOutlined';
 import AutoAwesomeIcon   from '@mui/icons-material/AutoAwesome';
 import PriceChangeOutlinedIcon from '@mui/icons-material/PriceChangeOutlined';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import HomeWorkOutlinedIcon from '@mui/icons-material/HomeWorkOutlined';
 import PublishIcon       from '@mui/icons-material/Publish';
 import SendIcon          from '@mui/icons-material/Send';
@@ -362,6 +363,11 @@ export default function MisProyectos() {
                       </TableCell>
                       <TableCell align="right">
                         <Box sx={{ display: 'flex', gap: 0.25, justifyContent: 'flex-end' }}>
+                          <Tooltip title="Comparar cotizaciones">
+                            <IconButton size="small" aria-label="Comparar cotizaciones" onClick={() => navigate(`/proyectos/${p.id}/comparar-cotizaciones`)}>
+                              <CompareArrowsIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          </Tooltip>
                           <Tooltip title="Sugerir precios">
                             <IconButton size="small" aria-label="Sugerir precios" onClick={() => navigate(`/proyectos/${p.id}/sugerencia-precios`)}
                               sx={{ color: '#6B7280', '&:hover': { color: '#2563EB', bgcolor: '#EFF6FF' } }}>
