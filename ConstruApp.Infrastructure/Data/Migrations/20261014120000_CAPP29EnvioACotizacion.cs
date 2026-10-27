@@ -12,6 +12,9 @@ public partial class CAPP29EnvioACotizacion : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
     {
+        migrationBuilder.AlterColumn<string>(
+            name: "TipoProyecto", table: "Proyectos", type: "nvarchar(30)", maxLength: 30,
+            nullable: true, oldClrType: typeof(string), oldType: "nvarchar(30)", oldMaxLength: 30);
         migrationBuilder.AddColumn<DateTime>(
             name: "FechaEnvioCotizacion",
             table: "Proyectos",
@@ -21,6 +24,11 @@ public partial class CAPP29EnvioACotizacion : Migration
 
     protected override void Down(MigrationBuilder migrationBuilder)
     {
+        migrationBuilder.Sql("UPDATE [Proyectos] SET [TipoProyecto] = N'Otro' WHERE [TipoProyecto] IS NULL;");
+        migrationBuilder.AlterColumn<string>(
+            name: "TipoProyecto", table: "Proyectos", type: "nvarchar(30)", maxLength: 30,
+            nullable: false, oldClrType: typeof(string), oldType: "nvarchar(30)", oldMaxLength: 30,
+            oldNullable: true);
         migrationBuilder.DropColumn(
             name: "FechaEnvioCotizacion",
             table: "Proyectos");

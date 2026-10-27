@@ -57,6 +57,7 @@ export default function MisProyectos() {
   const location  = useLocation();
   const { esRol, usuario } = useAuth();
   const [proyectos, setProyectos]   = useState([]);
+  const [enviando, setEnviando] = useState([]);
   const [loading, setLoading]       = useState(true);
   const [buscar, setBuscar]         = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
@@ -80,6 +81,7 @@ export default function MisProyectos() {
   }, [usuario?.rol]);
 
   const handleEnviarACotizacion = async (id) => {
+    setEnviando(ids => [...ids, id]);
     try {
       const { data } = await proyectosApi.enviarACotizacion(id);
       setProyectos(p => p.map(pr => pr.id === id ? data : pr));
@@ -87,6 +89,8 @@ export default function MisProyectos() {
     } catch (error) {
       const errors = error.response?.data?.errors;
       notify(errors ? Object.values(errors).join(' ') : error.response?.data?.message ?? 'Error al enviar el proyecto a cotización.', 'error');
+    } finally {
+      setEnviando(ids => ids.filter(actual => actual !== id));
     }
   };
 
@@ -330,7 +334,7 @@ export default function MisProyectos() {
                         <Typography fontSize={13.5} fontWeight={500} color="text.primary" sx={{
                           display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                         }}>
-                          {p.titulo}
+                          {p.titulo || 'Borrador sin nombre'}
                         </Typography>
                         {p.presupuestoMax && (
                           <Typography fontSize={11.5} color="text.secondary">
@@ -378,7 +382,7 @@ export default function MisProyectos() {
                           )}
                           {String(p.estado).toLowerCase() === 'borrador' && (
                             <Tooltip title="Enviar para cotización">
-                              <IconButton size="small" onClick={() => handleEnviarACotizacion(p.id)}
+                              <IconButton size="small" disabled={enviando.includes(p.id)} onClick={() => handleEnviarACotizacion(p.id)}
                                 sx={{ color: '#6B7280', '&:hover': { color: '#16A34A', bgcolor: '#F0FDF4' } }}>
                                 <PublishIcon sx={{ fontSize: 16 }} />
                               </IconButton>

@@ -10,7 +10,7 @@ public class Proyecto
     public string Titulo      { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
 
-    public TipoProyecto   TipoProyecto { get; set; } = TipoProyecto.Otro;
+    public TipoProyecto?  TipoProyecto { get; set; } = Enums.TipoProyecto.Otro;
     public EstadoProyecto Estado       { get; set; } = EstadoProyecto.Borrador;
 
     // Ubicación

@@ -34,7 +34,7 @@ Validación tras estos ajustes:
 - `git diff --check`: sin errores.
 - La restauración detectó advertencias de dependencias existentes (MailKit, MimeKit y System.Security.Cryptography.Pkcs). No fueron modificadas en este inicio.
 
-## Pendientes para aceptar CAPP-29
+## Pendientes detectados al inicio de CAPP-29
 
 1. Permitir persistir y retomar un borrador incompleto: Create y Update aún aplican validación completa de información general.
 2. Definir con la fuente del proyecto qué documentos son obligatorios e integrar su validación con CAPP-28; el endpoint revisado no verifica documentos. No inventar categorías obligatorias.
@@ -43,4 +43,4 @@ Validación tras estos ajustes:
 5. Validar la migración y el flujo completo en la aplicación real con su base SQL. No se ejecutaron migraciones ni UAT en esta sesión.
 6. Publicar la rama y abrir el PR cuando la historia esté preparada para revisión; los cambios permanecen locales y CAPP-29 continúa En progreso.
 
-Las 24 pruebas y la compilación verifican el estado local; no acreditan el cumplimiento completo de la historia ni validación de Azure.
+Estos puntos corresponden a la revisión inicial. La entrega posterior resuelve el guardado parcial, la configuración de documentos (ninguno por defecto, por decisión del usuario) y la sincronización con main. Véase [la entrega y configuración de CAPP-29](CAPP29-configuracion.md): 41 pruebas automáticas correctas, compilación y ESLint correctos. Las UAT se posponen al final del sprint; no se aplicaron migraciones a SQL/Azure.
