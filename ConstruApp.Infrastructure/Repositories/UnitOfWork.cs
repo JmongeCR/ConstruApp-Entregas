@@ -12,7 +12,7 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<Propiedad>         Propiedades         { get; }
     public IRepository<FotoPropiedad>     FotosPropiedad      { get; }
     public IRepository<ArchivoProyecto>   Archivos            { get; }
-    public IRepository<CotizacionIA>      CotizacionesIA      { get; }
+    public ICotizacionIARepository        CotizacionesIA      { get; }
     public IRepository<LineaCotizacionIA> LineasCotizacion    { get; }
     public IRepository<Material>          Materiales          { get; }
     public IRepository<PrecioMaterial>    PreciosMaterial     { get; }
@@ -50,7 +50,7 @@ public class UnitOfWork : IUnitOfWork
         Propiedades           = new Repository<Propiedad>(context);
         FotosPropiedad        = new Repository<FotoPropiedad>(context);
         Archivos              = new Repository<ArchivoProyecto>(context);
-        CotizacionesIA        = new Repository<CotizacionIA>(context);
+        CotizacionesIA        = new CotizacionIARepository(context);
         LineasCotizacion      = new Repository<LineaCotizacionIA>(context);
         Materiales            = new Repository<Material>(context);
         PreciosMaterial       = new Repository<PrecioMaterial>(context);

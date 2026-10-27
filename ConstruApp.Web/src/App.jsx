@@ -46,6 +46,8 @@ const MisPropuestas      = lazy(() => import('./pages/propuestas/Propuestas').th
 const PropuestasProyecto = lazy(() => import('./pages/propuestas/Propuestas').then(m => ({ default: m.PropuestasProyecto })));
 const Cotizaciones       = lazy(() => import('./pages/cotizaciones/Cotizaciones'));
 const CotizacionDetalle  = lazy(() => import('./pages/cotizacion/CotizacionDetalle'));
+const SugerenciaPrecios = lazy(() => import('./pages/cotizacion/SugerenciaPrecios'));
+const CompararCotizaciones = lazy(() => import('./pages/propuestas/CompararCotizaciones'));
 const Facturacion        = lazy(() => import('./pages/facturacion/Facturacion'));
 const FacturaNueva       = lazy(() => import('./pages/facturacion/FacturaNueva'));
 const FacturaDetalle     = lazy(() => import('./pages/facturacion/FacturaDetalle'));
@@ -331,6 +333,8 @@ function AppRoutes() {
         <Route path="/calendario"             element={<RoleGuard roles={['Cliente','Admin']}><Calendario /></RoleGuard>} />
         <Route path="/cotizaciones"            element={<RoleGuard roles={['Cliente','Admin']}><Cotizaciones /></RoleGuard>} />
         <Route path="/cotizacion/:proyectoId"   element={<RoleGuard roles={['Cliente','Admin']}><CotizacionDetalle /></RoleGuard>} />
+        <Route path="/proyectos/:proyectoId/sugerencia-precios" element={<RoleGuard roles={['Cliente','Admin']}><SugerenciaPrecios /></RoleGuard>} />
+        <Route path="/proyectos/:proyectoId/comparar-cotizaciones" element={<RoleGuard roles={['Cliente','Admin']}><CompararCotizaciones /></RoleGuard>} />
         <Route path="/ia"                      element={<RoleGuard roles={['Cliente','Admin']}><IAEmpresarial /></RoleGuard>} />
 
         {/* Constructor */}
