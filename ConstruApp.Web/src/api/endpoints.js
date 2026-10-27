@@ -31,6 +31,7 @@ export const proyectosApi = {
   delete:        (id)          => api.delete(`/proyectos/${id}`),
   getFotos:      (id)          => api.get(`/proyectos/${id}/fotos`),
   subirFoto:     (id, data)    => api.post(`/proyectos/${id}/fotos`, data),
+  sugerirPrecios:(id)          => api.post(`/proyectos/${id}/sugerencia-precios`),
 };
 
 // ── Propiedades del cliente ──────────────────────────────────────────────────

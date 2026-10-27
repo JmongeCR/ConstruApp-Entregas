@@ -352,7 +352,7 @@ export default function MisProyectos() {
                       <TableCell align="right">
                         <Box sx={{ display: 'flex', gap: 0.25, justifyContent: 'flex-end' }}>
                           <Tooltip title="Cotización IA">
-                            <IconButton size="small" onClick={() => navigate(`/cotizacion/${p.id}`)}
+                            <IconButton size="small" onClick={() => navigate(`/proyectos/${p.id}/sugerencia-precios`)}
                               sx={{ color: '#6B7280', '&:hover': { color: '#2563EB', bgcolor: '#EFF6FF' } }}>
                               <AutoAwesomeIcon sx={{ fontSize: 16 }} />
                             </IconButton>
