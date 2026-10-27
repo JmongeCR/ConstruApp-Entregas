@@ -27,6 +27,7 @@ export const proyectosApi = {
   create:        (data)        => api.post('/proyectos', data),
   update:        (id, data)    => api.put(`/proyectos/${id}`, data),
   publicar:      (id)          => api.put(`/proyectos/${id}/publicar`),
+  enviarACotizacion: (id)      => api.put(`/proyectos/${id}/enviar-cotizacion`),
   cambiarEstado: (id, estado)  => api.put(`/proyectos/${id}/estado`, { estado }),
   delete:        (id)          => api.delete(`/proyectos/${id}`),
   getFotos:      (id)          => api.get(`/proyectos/${id}/fotos`),

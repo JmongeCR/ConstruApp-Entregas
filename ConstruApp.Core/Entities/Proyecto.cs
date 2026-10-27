@@ -23,6 +23,7 @@ public class Proyecto
     public decimal? AreaM2         { get; set; }
 
     public DateTime  FechaPublicacion { get; set; } = DateTime.UtcNow;
+    public DateTime? FechaEnvioCotizacion { get; set; }
     public DateTime? FechaInicio      { get; set; }
     public DateTime? FechaFin         { get; set; }
 

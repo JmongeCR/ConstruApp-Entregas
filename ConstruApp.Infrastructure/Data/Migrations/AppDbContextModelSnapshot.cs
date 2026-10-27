@@ -1621,6 +1621,9 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.Property<DateTime?>("FechaInicio")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("FechaEnvioCotizacion")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("FechaPublicacion")
                         .HasColumnType("datetime2");
 

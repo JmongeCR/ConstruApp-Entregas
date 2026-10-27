@@ -25,7 +25,7 @@ import { useAuth } from '../../context/AuthContext';
 const ESTADO = {
   Borrador:     { bg: '#F1F5F9', color: '#64748B', label: 'Borrador'      },
   Publicado:    { bg: '#DCFCE7', color: '#166534', label: 'Publicado'     },
-  EnPropuestas: { bg: '#FEF9C3', color: '#854D0E', label: 'En propuestas' },
+  EnPropuestas: { bg: '#FEF9C3', color: '#854D0E', label: 'En proceso de cotización' },
   EnCurso:      { bg: '#DBEAFE', color: '#1D4ED8', label: 'En ejecución'  },
   Completado:   { bg: '#D1FAE5', color: '#065F46', label: 'Completado'    },
   Cancelado:    { bg: '#FEE2E2', color: '#991B1B', label: 'Cancelado'     },
@@ -79,12 +79,15 @@ export default function MisProyectos() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario?.rol]);
 
-  const handlePublicar = async (id) => {
+  const handleEnviarACotizacion = async (id) => {
     try {
-      await proyectosApi.publicar(id);
-      setProyectos(p => p.map(pr => pr.id === id ? { ...pr, estado: 'Publicado' } : pr));
-      notify('Proyecto publicado. Los constructores ya pueden verlo.');
-    } catch { notify('Error al publicar.', 'error'); }
+      const { data } = await proyectosApi.enviarACotizacion(id);
+      setProyectos(p => p.map(pr => pr.id === id ? data : pr));
+      notify('Proyecto enviado a cotización. Los constructores ya pueden verlo.');
+    } catch (error) {
+      const errors = error.response?.data?.errors;
+      notify(errors ? Object.values(errors).join(' ') : error.response?.data?.message ?? 'Error al enviar el proyecto a cotización.', 'error');
+    }
   };
 
   const handleDelete = async () => {
@@ -312,8 +315,11 @@ export default function MisProyectos() {
               <TableBody>
                 {proyectosFiltrados.map(p => {
                   const est = ESTADO[p.estado] ?? ESTADO.Borrador;
-                  const fecha = p.fechaPublicacion
-                    ? new Date(p.fechaPublicacion).toLocaleDateString('es-CR', { day: 'numeric', month: 'short', year: 'numeric' })
+                  const fechaProyecto = p.estado === 'EnPropuestas'
+                    ? (p.fechaEnvioCotizacion ?? p.fechaPublicacion)
+                    : p.fechaPublicacion;
+                  const fecha = fechaProyecto
+                    ? new Date(fechaProyecto).toLocaleDateString('es-CR', { day: 'numeric', month: 'short', year: 'numeric' })
                     : p.fechaCreacion
                     ? new Date(p.fechaCreacion).toLocaleDateString('es-CR', { day: 'numeric', month: 'short', year: 'numeric' })
                     : '—';
@@ -371,8 +377,8 @@ export default function MisProyectos() {
                             </Button>
                           )}
                           {String(p.estado).toLowerCase() === 'borrador' && (
-                            <Tooltip title="Publicar">
-                              <IconButton size="small" onClick={() => handlePublicar(p.id)}
+                            <Tooltip title="Enviar para cotización">
+                              <IconButton size="small" onClick={() => handleEnviarACotizacion(p.id)}
                                 sx={{ color: '#6B7280', '&:hover': { color: '#16A34A', bgcolor: '#F0FDF4' } }}>
                                 <PublishIcon sx={{ fontSize: 16 }} />
                               </IconButton>
