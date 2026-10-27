@@ -39,6 +39,7 @@ import {
   mensajesApi, presupuestoApi, ordenesApi, equipoProyectoApi,
 } from '../../api/endpoints';
 import { useAuth } from '../../context/AuthContext';
+import { leerAdjuntosAvance, validarAvance } from '../../utils/avancesAdjuntos';
 
 const ACCENT   = '#2563EB';
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:5115';
@@ -72,30 +73,34 @@ function TabAvances({ proyectoId, esConstructor, proyectoEstado, notify }) {
   const [fotos,     setFotos]     = useState([]);   // array de {file, preview}
   const [saving,    setSaving]    = useState(false);
   const [lightbox,  setLightbox]  = useState(null); // URL de foto ampliada
+  const [leyendo, setLeyendo] = useState(false);
+  const [errorCarga, setErrorCarga] = useState('');
 
   const cargar = () =>
     avancesApi.getByProyecto(proyectoId)
-      .then(r => setAvances(r.data))
-      .catch(() => {})
+      .then(r => { setAvances(r.data); setErrorCarga(''); })
+      .catch(e => setErrorCarga(e.response?.data?.message ?? 'No fue posible cargar los avances.'))
       .finally(() => setLoading(false));
 
   useEffect(() => { cargar(); }, [proyectoId]);
 
-  const porcentajeMax = avances.length > 0
-    ? Math.max(...avances.map(a => a.porcentajeAvance))
-    : 0;
+  const porcentajeMax = avances[0]?.porcentajeAvance ?? 0;
 
-  const handleFotoSelect = (e) => {
+  const handleFotoSelect = async (e) => {
     const files = Array.from(e.target.files);
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (ev) => setFotos(prev => [...prev, { file, preview: ev.target.result, base64: ev.target.result }]);
-      reader.readAsDataURL(file);
-    });
     e.target.value = '';
+    setLeyendo(true);
+    try { const nuevos = await leerAdjuntosAvance(files, fotos.length); setFotos(prev => [...prev, ...nuevos]); }
+    catch (error) { notify(error.message, 'error'); }
+    finally { setLeyendo(false); }
   };
 
   const handleCrear = async () => {
+    const error = validarAvance(form);
+    if (error) {
+      notify(error, 'error');
+      return;
+    }
     setSaving(true);
     try {
       const fotosPayload = fotos.map(f => ({
@@ -105,21 +110,22 @@ function TabAvances({ proyectoId, esConstructor, proyectoEstado, notify }) {
         tamanioBytes: f.file.size,
       }));
 
-      await avancesApi.create({
+      const { data } = await avancesApi.create({
         proyectoId:       parseInt(proyectoId),
-        titulo:           form.titulo || 'Avance registrado',
+        titulo:           form.titulo.trim(),
         descripcion:      form.descripcion,
         responsable:      form.responsable || null,
-        porcentajeAvance: parseInt(form.porcentajeAvance),
+        porcentajeAvance: Number(form.porcentajeAvance),
         fotos:            fotosPayload.length > 0 ? fotosPayload : null,
       });
-      await cargar();
+      setAvances(prev => [data, ...prev]);
+      setErrorCarga('');
       setOpen(false);
       setForm({ titulo: '', descripcion: '', responsable: '', porcentajeAvance: 50 });
       setFotos([]);
       notify('Avance registrado con éxito.');
     } catch (e) {
-      notify(e.response?.data?.message || 'Error al guardar.', 'error');
+      notify(e.response?.data?.message || 'No se pudo registrar el avance.', 'error');
     } finally { setSaving(false); }
   };
 
@@ -132,6 +138,7 @@ function TabAvances({ proyectoId, esConstructor, proyectoEstado, notify }) {
   };
 
   if (loading) return <LinearProgress />;
+  if (errorCarga) return <Alert severity="error" action={<Button onClick={cargar}>Reintentar</Button>}>{errorCarga}</Alert>;
 
   return (
     <Box>
@@ -149,7 +156,7 @@ function TabAvances({ proyectoId, esConstructor, proyectoEstado, notify }) {
         </Typography>
       </Box>
 
-      {esConstructor && proyectoEstado !== 'Completado' && (
+      {esConstructor && proyectoEstado === 'EnCurso' && (
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}
           sx={{ mb: 2.5, bgcolor: ACCENT, '&:hover': { bgcolor: '#1D4ED8' } }}>
           Registrar avance
@@ -202,10 +209,10 @@ function TabAvances({ proyectoId, esConstructor, proyectoEstado, notify }) {
                             {a.fotos.map(f => (
                               <ImageListItem key={f.id}
                                 sx={{ borderRadius: '6px', overflow: 'hidden', cursor: 'pointer', maxHeight: 120 }}
-                                onClick={() => setLightbox(`${API_BASE}${f.url}`)}>
-                                <img src={`${API_BASE}${f.url}`} alt={f.nombreArchivo}
+                                onClick={f.tipo === 'video' ? undefined : () => setLightbox(`${API_BASE}${f.url}`)}>
+                                {f.tipo === 'video' ? <video src={`${API_BASE}${f.url}`} controls preload="metadata" style={{ width: '100%', height: 120 }} /> : <img src={`${API_BASE}${f.url}`} alt={f.nombreArchivo}
                                   style={{ width: '100%', height: 120, objectFit: 'cover' }}
-                                  onError={e => { e.target.style.display = 'none'; }} />
+                                  onError={e => { e.target.style.display = 'none'; }} />}
                               </ImageListItem>
                             ))}
                           </ImageList>
@@ -227,7 +234,7 @@ function TabAvances({ proyectoId, esConstructor, proyectoEstado, notify }) {
       )}
 
       {/* Dialog nuevo avance */}
-      <Dialog open={open} onClose={() => { setOpen(false); setFotos([]); }} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={() => { if (!saving && !leyendo) { setOpen(false); setFotos([]); } }} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 800 }}>Registrar avance de obra</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '12px !important' }}>
           <TextField fullWidth label="Título del avance *"
@@ -253,16 +260,16 @@ function TabAvances({ proyectoId, esConstructor, proyectoEstado, notify }) {
           </Box>
           {/* Foto upload */}
           <Box>
-            <input ref={fileRef} type="file" accept="image/*,video/*" multiple hidden onChange={handleFotoSelect} />
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" multiple hidden disabled={leyendo || saving} onChange={handleFotoSelect} />
             <Button variant="outlined" size="small" startIcon={<AddPhotoAlternateIcon />}
-              onClick={() => fileRef.current.click()}>
-              Adjuntar fotos / videos
+              disabled={leyendo || saving} onClick={() => fileRef.current.click()}>
+              {leyendo ? 'Leyendo archivos…' : 'Adjuntar fotos / videos (máx. 4, 5 MB cada uno)'}
             </Button>
             {fotos.length > 0 && (
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
                 {fotos.map((f, i) => (
                   <Box key={i} sx={{ position: 'relative' }}>
-                    <Box component="img" src={f.preview} alt={f.file.name}
+                    <Box component={f.file.type.startsWith('video/') ? 'video' : 'img'} src={f.preview} title={f.file.name}
                       sx={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 1,
                         border: '1px solid #E2E8F0' }} />
                     <IconButton size="small"
@@ -278,8 +285,8 @@ function TabAvances({ proyectoId, esConstructor, proyectoEstado, notify }) {
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => { setOpen(false); setFotos([]); }}>Cancelar</Button>
-          <Button variant="contained" onClick={handleCrear} disabled={saving || !form.titulo}
+          <Button disabled={saving || leyendo} onClick={() => { setOpen(false); setFotos([]); }}>Cancelar</Button>
+          <Button variant="contained" onClick={handleCrear} disabled={saving || leyendo || !form.titulo.trim()}
             sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#1D4ED8' } }}>
             {saving ? 'Guardando…' : 'Registrar'}
           </Button>
@@ -1747,7 +1754,7 @@ export default function ObraDetalle() {
       </Box>
 
       <TabPanel value={tab} index={0}>
-        <TabAvances proyectoId={proyectoId} esConstructor={esConstructor} proyectoEstado={proyecto.estado} notify={notify} />
+        <TabAvances key={proyectoId} proyectoId={proyectoId} esConstructor={esConstructor || usuario?.rol === 'Admin'} proyectoEstado={proyecto.estado} notify={notify} />
       </TabPanel>
       <TabPanel value={tab} index={1}>
         <TabChat proyectoId={proyectoId} usuario={usuario} notify={notify} />
