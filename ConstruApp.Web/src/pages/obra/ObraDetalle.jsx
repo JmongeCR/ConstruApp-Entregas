@@ -96,6 +96,10 @@ function TabAvances({ proyectoId, esConstructor, proyectoEstado, notify }) {
   };
 
   const handleCrear = async () => {
+    if (!form.titulo.trim()) {
+      notify('El título del avance es obligatorio.', 'error');
+      return;
+    }
     setSaving(true);
     try {
       const fotosPayload = fotos.map(f => ({
@@ -107,7 +111,7 @@ function TabAvances({ proyectoId, esConstructor, proyectoEstado, notify }) {
 
       await avancesApi.create({
         proyectoId:       parseInt(proyectoId),
-        titulo:           form.titulo || 'Avance registrado',
+        titulo:           form.titulo.trim(),
         descripcion:      form.descripcion,
         responsable:      form.responsable || null,
         porcentajeAvance: parseInt(form.porcentajeAvance),
@@ -119,7 +123,7 @@ function TabAvances({ proyectoId, esConstructor, proyectoEstado, notify }) {
       setFotos([]);
       notify('Avance registrado con éxito.');
     } catch (e) {
-      notify(e.response?.data?.message || 'Error al guardar.', 'error');
+      notify(e.response?.data?.message || 'No se pudo registrar el avance.', 'error');
     } finally { setSaving(false); }
   };
 
