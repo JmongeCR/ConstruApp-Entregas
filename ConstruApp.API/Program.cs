@@ -97,6 +97,10 @@ if (!string.IsNullOrEmpty(resendKey))
 else
     builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUnitOfWork,       UnitOfWork>();
+builder.Services.AddOptions<CotizacionRequisitosOptions>()
+    .Bind(builder.Configuration.GetSection(CotizacionRequisitosOptions.SectionName))
+    .Validate(options => options.EsValida(), "Los requisitos de cotización contienen tipos o categorías inválidos.")
+    .ValidateOnStart();
 
 // ── Controllers + JSON ─────────────────────────────────────────────────────
 builder.Services.AddControllers()
