@@ -177,10 +177,12 @@ function AccionesMenu({ row, onRefresh, onToast, onComparar, comparando }) {
 function ComparacionModal({ ids, onClose }) {
   const [datos, setDatos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     Promise.all(ids.map(id => cotizacionIAApi.getById(id).then(r => r.data)))
       .then(setDatos)
+      .catch(e => setError(e.response?.data?.message || 'No fue posible cargar las cotizaciones seleccionadas.'))
       .finally(() => setLoading(false));
   }, [ids]);
 
@@ -198,6 +200,12 @@ function ComparacionModal({ ids, onClose }) {
       <DialogContent dividers sx={{ p: 0 }}>
         {loading ? (
           <Box sx={{ p: 3 }}><Skeleton height={200} /></Box>
+        ) : error ? (
+          <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>
+        ) : datos.length < 2 ? (
+          <Alert severity="info" sx={{ m: 2 }}>
+            Solo hay una cotización seleccionada. Selecciona al menos dos para comparar sus precios y características.
+          </Alert>
         ) : (
           <Box sx={{ overflowX: 'auto' }}>
             <Table size="small">
@@ -272,6 +280,7 @@ export default function CotizacionesIA() {
   const [filtEstado,setFiltEstado]= useState('');
   const [filtFechaD,setFiltFechaD]= useState('');
   const [filtFechaH,setFiltFechaH]= useState('');
+  const [orden, setOrden] = useState('reciente');
   const [showFilt,  setShowFilt]  = useState(false);
 
   const notify = (msg, severity = 'success') => setToast({ open: true, msg, severity });
@@ -285,6 +294,7 @@ export default function CotizacionesIA() {
         ...(filtEstado && { estado: filtEstado }),
         ...(filtFechaD && { fechaDesde: filtFechaD }),
         ...(filtFechaH && { fechaHasta: filtFechaH }),
+        orden,
       };
       const r = await cotizacionIAApi.getAll(params);
       let items = r.data.items;
@@ -301,7 +311,7 @@ export default function CotizacionesIA() {
       setTotal(r.data.total);
     } catch { notify('Error al cargar cotizaciones', 'error'); }
     finally { setLoading(false); }
-  }, [page, filtPlan, filtEstado, filtFechaD, filtFechaH, busqueda]);
+  }, [page, filtPlan, filtEstado, filtFechaD, filtFechaH, busqueda, orden]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -315,11 +325,11 @@ export default function CotizacionesIA() {
   };
 
   const limpiarFiltros = () => {
-    setFiltPlan(''); setFiltEstado(''); setFiltFechaD(''); setFiltFechaH('');
+    setFiltPlan(''); setFiltEstado(''); setFiltFechaD(''); setFiltFechaH(''); setOrden('reciente');
     setBusqueda(''); setPage(1);
   };
 
-  const hayFiltros = filtPlan || filtEstado || filtFechaD || filtFechaH || busqueda;
+  const hayFiltros = filtPlan || filtEstado || filtFechaD || filtFechaH || busqueda || orden !== 'reciente';
 
   return (
     <Box>
@@ -342,7 +352,7 @@ export default function CotizacionesIA() {
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          {comparando.length >= 2 && (
+          {comparando.length >= 1 && (
             <Button variant="contained" size="small" startIcon={<CompareArrowsIcon />}
               onClick={() => setShowComp(true)}
               sx={{ bgcolor: '#7C3AED', '&:hover': { bgcolor: '#6D28D9' },
@@ -386,6 +396,15 @@ export default function CotizacionesIA() {
         {showFilt && (
           <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 2, pt: 2,
             borderTop: '1px solid #F1F5F9' }}>
+            <FormControl size="small" sx={{ minWidth: 170 }}>
+              <InputLabel>Ordenar</InputLabel>
+              <Select value={orden} label="Ordenar" onChange={e => { setOrden(e.target.value); setPage(1); }}>
+                <MenuItem value="reciente">Más recientes</MenuItem>
+                <MenuItem value="antiguo">Más antiguas</MenuItem>
+                <MenuItem value="menorPrecio">Menor precio</MenuItem>
+                <MenuItem value="mayorPrecio">Mayor precio</MenuItem>
+              </Select>
+            </FormControl>
             <FormControl size="small" sx={{ minWidth: 140 }}>
               <InputLabel>Plan</InputLabel>
               <Select value={filtPlan} label="Plan" onChange={e => setFiltPlan(e.target.value)}>
