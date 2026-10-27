@@ -1,6 +1,5 @@
 using System.Text;
 using System.Threading.RateLimiting;
-using ConstruApp.API.Controllers;
 using ConstruApp.API.Services;
 using ConstruApp.Core.Entities;
 using ConstruApp.Core.Interfaces;
@@ -90,7 +89,10 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddScoped<IPermisosService,  PermisosService>();
 builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
 builder.Services.AddHttpClient();
-builder.Services.Configure<RangosPreciosOptions>(builder.Configuration.GetSection("EstimacionPrecios"));
+builder.Services.AddOptions<RangosPreciosOptions>()
+    .Bind(builder.Configuration.GetSection(RangosPreciosOptions.SectionName))
+    .Validate(options => options.EsValida(), "Los rangos de precios contienen tipos, límites o fuentes inválidos.")
+    .ValidateOnStart();
 var resendKey = builder.Configuration["Resend:ApiKey"];
 if (!string.IsNullOrEmpty(resendKey))
     builder.Services.AddScoped<IEmailService, ResendEmailService>();
