@@ -10,7 +10,7 @@ public class Proyecto
     public string Titulo      { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
 
-    public TipoProyecto   TipoProyecto { get; set; } = TipoProyecto.Otro;
+    public TipoProyecto?  TipoProyecto { get; set; } = Enums.TipoProyecto.Otro;
     public EstadoProyecto Estado       { get; set; } = EstadoProyecto.Borrador;
 
     // Ubicación
@@ -23,6 +23,7 @@ public class Proyecto
     public decimal? AreaM2         { get; set; }
 
     public DateTime  FechaPublicacion { get; set; } = DateTime.UtcNow;
+    public DateTime? FechaEnvioCotizacion { get; set; }
     public DateTime? FechaInicio      { get; set; }
     public DateTime? FechaFin         { get; set; }
 
