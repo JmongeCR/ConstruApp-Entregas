@@ -105,9 +105,15 @@ public class ProyectosController : ControllerBase
         var proyecto = await _uow.Proyectos.GetByIdAsync(id);
         if (proyecto is null) return NotFound();
         if (proyecto.ClienteId != userId &&
+            !User.IsInRole("Admin") &&
             proyecto.Estado != EstadoProyecto.Publicado &&
             proyecto.Estado != EstadoProyecto.EnPropuestas)
-            return Forbid();
+        {
+            if (!User.IsInRole("Constructor")) return Forbid();
+            var perfil = (await _uow.PerfilesConstructor.FindAsync(p => p.UsuarioId == userId)).FirstOrDefault();
+            if (perfil is null || !await _uow.Propuestas.ExistsAsync(p => p.ProyectoId == id && p.ConstructorId == perfil.Id &&
+                (p.Estado == EstadoPropuesta.Aceptada || p.Estado == EstadoPropuesta.Finalizada))) return Forbid();
+        }
         return Ok(MapDto(proyecto));
     }
 
