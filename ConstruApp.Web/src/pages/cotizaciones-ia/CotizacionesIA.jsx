@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Button, Chip, TextField, Select, MenuItem, FormControl,
-  InputLabel, InputAdornment, Tooltip, IconButton, Menu, Divider,
+  InputLabel, InputAdornment, IconButton, Menu, Divider,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, Alert, Snackbar, Dialog, DialogTitle, DialogContent,
-  DialogActions, ToggleButton, ToggleButtonGroup, Card, CardContent,
+  DialogActions,
   Skeleton, Checkbox,
 } from '@mui/material';
 import AutoAwesomeIcon          from '@mui/icons-material/AutoAwesome';
@@ -85,7 +85,7 @@ function AccionesMenu({ row, onRefresh, onToast, onComparar, comparando }) {
     try {
       const r = await cotizacionIAApi.getById(row.id);
       setPdfData(r.data);
-    } catch {}
+    } catch { onToast('No fue posible cargar el detalle para el PDF.', 'error'); }
     finally { setLoadPdf(false); }
   };
 
@@ -180,13 +180,13 @@ function ComparacionModal({ ids, onClose }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let active = true;
     Promise.all(ids.map(id => cotizacionIAApi.getById(id).then(r => r.data)))
-      .then(setDatos)
-      .catch(e => setError(e.response?.data?.message || 'No fue posible cargar las cotizaciones seleccionadas.'))
-      .finally(() => setLoading(false));
+      .then(data => { if (active) setDatos(data); })
+      .catch(e => { if (active) setError(e.response?.data?.message || 'No fue posible cargar las cotizaciones seleccionadas.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [ids]);
-
-  const cols = datos.length;
 
   return (
     <Dialog open maxWidth="lg" fullWidth onClose={onClose}>
@@ -268,7 +268,7 @@ export default function CotizacionesIA() {
   const navigate    = useNavigate();
   const [rows,      setRows]      = useState([]);
   const [total,     setTotal]     = useState(0);
-  const [loading,   setLoading]   = useState(true);
+  const [consultaCargada, setConsultaCargada] = useState('');
   const [page,      setPage]      = useState(1);
   const [toast,     setToast]     = useState({ open: false, msg: '', severity: 'success' });
   const [comparando, setComparando] = useState([]);
@@ -281,13 +281,15 @@ export default function CotizacionesIA() {
   const [filtFechaD,setFiltFechaD]= useState('');
   const [filtFechaH,setFiltFechaH]= useState('');
   const [orden, setOrden] = useState('reciente');
+  const solicitud = useRef(0);
   const [showFilt,  setShowFilt]  = useState(false);
+  const consulta = JSON.stringify([page, filtPlan, filtEstado, filtFechaD, filtFechaH, busqueda, orden]);
+  const loading = consultaCargada !== consulta;
 
   const notify = (msg, severity = 'success') => setToast({ open: true, msg, severity });
 
-  const cargar = useCallback(async () => {
-    setLoading(true);
-    try {
+  const cargar = useCallback(() => {
+    const actual = ++solicitud.current;
       const params = {
         page, size: 20,
         ...(filtPlan   && { plan:   filtPlan }),
@@ -295,23 +297,18 @@ export default function CotizacionesIA() {
         ...(filtFechaD && { fechaDesde: filtFechaD }),
         ...(filtFechaH && { fechaHasta: filtFechaH }),
         orden,
+        ...(busqueda.trim() && { busqueda: busqueda.trim() }),
       };
-      const r = await cotizacionIAApi.getAll(params);
-      let items = r.data.items;
-      // Filtro local por búsqueda de texto
-      if (busqueda.trim()) {
-        const q = busqueda.toLowerCase();
-        items = items.filter(i =>
-          i.proyecto?.titulo?.toLowerCase().includes(q) ||
-          i.cliente?.nombre?.toLowerCase().includes(q) ||
-          i.nombrePlan?.toLowerCase().includes(q)
-        );
-      }
-      setRows(items);
+    return cotizacionIAApi.getAll(params).then(r => {
+      if (actual !== solicitud.current) return;
+      setRows(r.data.items);
       setTotal(r.data.total);
-    } catch { notify('Error al cargar cotizaciones', 'error'); }
-    finally { setLoading(false); }
-  }, [page, filtPlan, filtEstado, filtFechaD, filtFechaH, busqueda, orden]);
+    }).catch(e => {
+      if (actual !== solicitud.current) return;
+      setRows([]); setTotal(0);
+      notify(e.response?.data?.message ?? 'Error al cargar cotizaciones', 'error');
+    }).finally(() => { if (actual === solicitud.current) setConsultaCargada(consulta); });
+  }, [page, filtPlan, filtEstado, filtFechaD, filtFechaH, busqueda, orden, consulta]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -374,7 +371,7 @@ export default function CotizacionesIA() {
         <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
           <TextField
             size="small" placeholder="Buscar por proyecto, cliente o plan…"
-            value={busqueda} onChange={e => setBusqueda(e.target.value)}
+            value={busqueda} onChange={e => { setBusqueda(e.target.value); setPage(1); }}
             sx={{ flex: 1, minWidth: 220 }}
             InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: 18, color: '#94A3B8' }} /></InputAdornment> }}
           />
@@ -407,7 +404,7 @@ export default function CotizacionesIA() {
             </FormControl>
             <FormControl size="small" sx={{ minWidth: 140 }}>
               <InputLabel>Plan</InputLabel>
-              <Select value={filtPlan} label="Plan" onChange={e => setFiltPlan(e.target.value)}>
+              <Select value={filtPlan} label="Plan" onChange={e => { setFiltPlan(e.target.value); setPage(1); }}>
                 <MenuItem value="">Todos</MenuItem>
                 <MenuItem value="economico">Económico</MenuItem>
                 <MenuItem value="estandar">Estándar</MenuItem>
@@ -416,7 +413,7 @@ export default function CotizacionesIA() {
             </FormControl>
             <FormControl size="small" sx={{ minWidth: 160 }}>
               <InputLabel>Estado</InputLabel>
-              <Select value={filtEstado} label="Estado" onChange={e => setFiltEstado(e.target.value)}>
+              <Select value={filtEstado} label="Estado" onChange={e => { setFiltEstado(e.target.value); setPage(1); }}>
                 <MenuItem value="">Todos</MenuItem>
                 <MenuItem value="Activa">Activa</MenuItem>
                 <MenuItem value="Archivada">Archivada</MenuItem>
@@ -425,13 +422,13 @@ export default function CotizacionesIA() {
               </Select>
             </FormControl>
             <TextField size="small" label="Desde" type="date" value={filtFechaD}
-              onChange={e => setFiltFechaD(e.target.value)}
+              onChange={e => { setFiltFechaD(e.target.value); setPage(1); }}
               InputLabelProps={{ shrink: true }}
               InputProps={{ startAdornment: <InputAdornment position="start"><CalendarTodayIcon sx={{ fontSize: 14, color: '#94A3B8' }} /></InputAdornment> }}
               sx={{ minWidth: 165 }}
             />
             <TextField size="small" label="Hasta" type="date" value={filtFechaH}
-              onChange={e => setFiltFechaH(e.target.value)}
+              onChange={e => { setFiltFechaH(e.target.value); setPage(1); }}
               InputLabelProps={{ shrink: true }}
               sx={{ minWidth: 165 }}
             />

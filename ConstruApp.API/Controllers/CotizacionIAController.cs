@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using ConstruApp.Core.Entities;
-using ConstruApp.Infrastructure.Data;
+using ConstruApp.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,9 +13,9 @@ namespace ConstruApp.API.Controllers;
 [Authorize(Roles = "Cliente,Admin")]
 public sealed class CotizacionIAController : ControllerBase
 {
-    private readonly AppDbContext _db;
+    private readonly IUnitOfWork _uow;
 
-    public CotizacionIAController(AppDbContext db) => _db = db;
+    public CotizacionIAController(IUnitOfWork uow) => _uow = uow;
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
@@ -25,25 +25,34 @@ public sealed class CotizacionIAController : ControllerBase
         [FromQuery] string? estado = null,
         [FromQuery] DateTime? fechaDesde = null,
         [FromQuery] DateTime? fechaHasta = null,
-        [FromQuery] string? orden = "reciente")
+        [FromQuery] string? orden = "reciente",
+        [FromQuery] string? busqueda = null)
     {
-        if (page < 1 || size is < 1 or > 100)
+        if (page < 1 || size is < 1 or > 100 || (long)(page - 1) * size > int.MaxValue)
             return BadRequest(new { message = "La paginación solicitada no es válida." });
         if (fechaDesde.HasValue && fechaHasta.HasValue && fechaDesde.Value.Date > fechaHasta.Value.Date)
             return BadRequest(new { message = "La fecha inicial debe ser anterior a la fecha final." });
 
         var query = QueryVisible();
+        if (!new[] { "reciente", "antiguo", "menorprecio", "mayorprecio" }.Contains((orden ?? "reciente").ToLowerInvariant()))
+            return BadRequest(new { message = "El orden solicitado no es válido." });
+        if (!string.IsNullOrWhiteSpace(busqueda))
+        {
+            var texto = busqueda.Trim().ToLower();
+            query = query.Where(c => c.Proyecto.Titulo.ToLower().Contains(texto) ||
+                c.Proyecto.Cliente.Nombre.ToLower().Contains(texto) || (c.NombrePlan ?? "").ToLower().Contains(texto));
+        }
         if (!string.IsNullOrWhiteSpace(plan)) query = query.Where(c => c.Plan == plan);
         if (!string.IsNullOrWhiteSpace(estado)) query = query.Where(c => c.Estado == estado);
         if (fechaDesde.HasValue) query = query.Where(c => c.FechaGeneracion >= fechaDesde.Value.Date);
-        if (fechaHasta.HasValue) query = query.Where(c => c.FechaGeneracion < fechaHasta.Value.Date.AddDays(1));
+        if (fechaHasta.HasValue) query = query.Where(c => c.FechaGeneracion.Date <= fechaHasta.Value.Date);
 
         query = (orden ?? "reciente").ToLowerInvariant() switch
         {
-            "menorprecio" => query.OrderBy(c => c.RangoMinimo).ThenByDescending(c => c.FechaGeneracion),
-            "mayorprecio" => query.OrderByDescending(c => c.RangoMaximo).ThenByDescending(c => c.FechaGeneracion),
-            "antiguo" => query.OrderBy(c => c.FechaGeneracion),
-            _ => query.OrderByDescending(c => c.FechaGeneracion)
+            "menorprecio" => query.OrderBy(c => c.RangoMinimo).ThenBy(c => c.Id),
+            "mayorprecio" => query.OrderByDescending(c => c.RangoMaximo).ThenBy(c => c.Id),
+            "antiguo" => query.OrderBy(c => c.FechaGeneracion).ThenBy(c => c.Id),
+            _ => query.OrderByDescending(c => c.FechaGeneracion).ThenBy(c => c.Id)
         };
 
         var total = await query.CountAsync();
@@ -67,11 +76,7 @@ public sealed class CotizacionIAController : ControllerBase
 
     private IQueryable<CotizacionIA> QueryVisible()
     {
-        var query = _db.CotizacionesIA.AsNoTracking()
-            .Include(c => c.Proyecto)
-                .ThenInclude(p => p.Cliente)
-            .Include(c => c.Lineas)
-            .AsQueryable();
+        var query = _uow.CotizacionesIA.QueryWithDetails();
 
         if (!User.IsInRole("Admin"))
         {
