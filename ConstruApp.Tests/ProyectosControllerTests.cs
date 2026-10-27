@@ -7,6 +7,7 @@ using ConstruApp.Core.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using Microsoft.Extensions.Options;
 
 namespace ConstruApp.Tests.Unit;
 
@@ -276,7 +277,8 @@ public class ProyectosControllerTests
             new Claim("nombre", "Cliente Prueba"),
         ], "Test");
         var httpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
-        var controller = new ProyectosController(unitOfWork.Object, auditoria.Object)
+        var controller = new ProyectosController(unitOfWork.Object, auditoria.Object,
+            Options.Create(new CotizacionRequisitosOptions()))
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext },
         };

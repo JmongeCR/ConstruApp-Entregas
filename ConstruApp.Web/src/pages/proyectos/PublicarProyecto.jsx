@@ -147,7 +147,8 @@ export default function PublicarProyecto() {
   const [proyecto, setProyecto] = useState(null);
   const [planes]                = useState([]);
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(() => {
+    const empty = {
     titulo:         '',
     propiedadId:    null,
     descripcion:    '',
@@ -157,20 +158,22 @@ export default function PublicarProyecto() {
     provincia:      '',
     presupuestoMax: '',
     areaM2:         '',
+    fechaInicio:    '',
+    fechaFin:       '',
+    };
+    if (editando) return empty;
+    try {
+      const draft = JSON.parse(sessionStorage.getItem('capp26-project-draft') ?? 'null');
+      return draft && typeof draft === 'object' && !Array.isArray(draft) ? { ...empty, ...draft } : empty;
+    } catch {
+      return empty;
+    }
   });
 
   // Keep a new-project draft when the user temporarily opens property management.
   useEffect(() => {
     if (editando) return;
-    const draft = sessionStorage.getItem('capp26-project-draft');
-    if (!draft) return;
-    try {
-      setForm(current => ({ ...current, ...JSON.parse(draft) }));
-    } catch {
-      // Ignore an invalid or stale browser draft.
-    } finally {
-      sessionStorage.removeItem('capp26-project-draft');
-    }
+    sessionStorage.removeItem('capp26-project-draft');
   }, [editando]);
 
   const [touched, setTouched] = useState({});
@@ -199,6 +202,8 @@ export default function PublicarProyecto() {
           provincia:      data.provincia ?? '',
           presupuestoMax: data.presupuestoMax != null ? String(data.presupuestoMax) : '',
           areaM2:         data.areaM2 != null ? String(data.areaM2) : '',
+          fechaInicio:    data.fechaInicio?.slice(0, 10) ?? '',
+          fechaFin:       data.fechaFin?.slice(0, 10) ?? '',
         });
       })
       .catch(() => setError('No fue posible cargar la información del proyecto.'))
@@ -241,11 +246,12 @@ export default function PublicarProyecto() {
   };
 
   /* Crea o actualiza la información general del proyecto. */
-  const handleGuardarInformacion = async () => {
-    setTouched({ titulo: true, tipoProyecto: true, descripcion: true, propiedadId: true, areaM2: true, presupuestoMax: true });
+  const handleGuardarInformacion = async (modo = 'completo') => {
+    const parcial = modo !== 'completo';
+    setTouched({ titulo: !parcial, tipoProyecto: !parcial, descripcion: !parcial, propiedadId: !parcial, areaM2: true, presupuestoMax: true });
     const areaInvalida = form.areaM2.trim() !== '' && (!Number.isFinite(Number(form.areaM2)) || Number(form.areaM2) <= 0);
     const presupuestoInvalido = form.presupuestoMax.trim() !== '' && (!Number.isFinite(Number(form.presupuestoMax)) || Number(form.presupuestoMax) <= 0);
-    if (!form.tipoProyecto || !form.titulo.trim() || form.descripcion.trim().length < 20 || !form.propiedadId || areaInvalida || presupuestoInvalido) {
+    if ((!parcial && (!form.tipoProyecto || !form.titulo.trim() || form.descripcion.trim().length < 20 || !form.propiedadId)) || areaInvalida || presupuestoInvalido) {
       scrollTo(!form.propiedadId && proyectoDone ? ubicRef : proyectoRef);
       return;
     }
@@ -262,18 +268,25 @@ export default function PublicarProyecto() {
         provincia:      form.provincia || null,
         presupuestoMax: form.presupuestoMax.trim() !== '' ? Number(form.presupuestoMax) : null,
         areaM2:         form.areaM2.trim() !== '' ? Number(form.areaM2) : null,
+        fechaInicio:    form.fechaInicio || null,
+        fechaFin:       form.fechaFin || null,
       };
-      const { data } = editando
-        ? await proyectosApi.update(proyectoId, payload)
-        : await proyectosApi.create(payload);
+      const idGuardado = proyecto?.id ?? proyectoId;
+      const { data } = parcial
+        ? (idGuardado ? await proyectosApi.guardarBorrador(idGuardado, payload) : await proyectosApi.crearBorrador(payload))
+        : (idGuardado ? await proyectosApi.update(idGuardado, payload) : await proyectosApi.create(payload));
       setProyecto(data);
+      if (modo === 'enviar') await proyectosApi.enviarACotizacion(data.id);
       navigate('/mis-proyectos', {
-        state: { success: editando
+        state: { success: modo === 'enviar' ? 'Proyecto enviado a cotización.'
+          : parcial ? 'Borrador guardado. Podés retomarlo desde Mis proyectos.'
+          : editando
           ? 'La información general del proyecto se actualizó correctamente.'
           : 'La información general se guardó. Podés continuar completando el proyecto cuando querás.' },
       });
     } catch (requestError) {
-      setError(requestError.response?.data?.message
+      const errors = requestError.response?.data?.errors;
+      setError(errors ? Object.values(errors).join(' ') : requestError.response?.data?.message
         ?? 'No fue posible guardar la información. Revisá los datos e intentá de nuevo.');
     } finally {
       setLoading(false);
@@ -428,6 +441,10 @@ export default function PublicarProyecto() {
         title={editando ? 'Editar información del proyecto' : 'Información general del proyecto'}
         subtitle="Completá los datos principales y la propiedad donde se realizará el trabajo."
       />
+      <Alert severity="info" sx={{ mb: 2 }}>
+        Podés guardar un borrador con información pendiente. Para enviarlo a cotización,
+        completá los campos obligatorios y los documentos que correspondan al tipo de trabajo.
+      </Alert>
 
       {/* Layout 3 columnas */}
       <Box sx={{ display: 'flex', gap: { xs: 0, md: 4 }, alignItems: 'flex-start' }}>
@@ -556,6 +573,14 @@ export default function PublicarProyecto() {
           <FormSection title="Detalles del proyecto" badge="Opcional" sectionRef={detallesRef}>
             <Grid container spacing={2.5}>
               <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField fullWidth type="date" label="Inicio previsto" value={form.fechaInicio}
+                  onChange={set('fechaInicio')} slotProps={{ inputLabel: { shrink: true } }} />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField fullWidth type="date" label="Finalización prevista" value={form.fechaFin}
+                  onChange={set('fechaFin')} slotProps={{ inputLabel: { shrink: true } }} />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField fullWidth label="Área aproximada"
                   value={form.areaM2} onChange={set('areaM2')} type="number"
                   error={!!err.areaM2} onBlur={touch('areaM2')}
@@ -591,12 +616,20 @@ export default function PublicarProyecto() {
             <Button onClick={() => navigate('/mis-proyectos')} sx={{ color: 'text.secondary' }}>
               Cancelar
             </Button>
+            <Button variant="outlined" startIcon={<BookmarkIcon />}
+              onClick={() => handleGuardarInformacion('borrador')} disabled={loading || loadingProject}>
+              Guardar borrador
+            </Button>
             <Button variant="contained" startIcon={<SaveOutlinedIcon sx={{ fontSize: 15 }} />}
-              onClick={handleGuardarInformacion} disabled={loading || loadingProject}
+              onClick={() => handleGuardarInformacion()} disabled={loading || loadingProject}
               sx={{ boxShadow: 'none' }}>
               {loading
                 ? <><CircularProgress size={14} color="inherit" sx={{ mr: 1 }} />Guardando…</>
                 : 'Guardar información'}
+            </Button>
+            <Button variant="contained" startIcon={<PublishIcon />}
+              onClick={() => handleGuardarInformacion('enviar')} disabled={loading || loadingProject}>
+              Enviar para cotización
             </Button>
           </Box>
         </Box>

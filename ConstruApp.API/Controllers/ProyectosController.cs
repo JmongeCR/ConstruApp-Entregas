@@ -5,6 +5,7 @@ using ConstruApp.Core.Enums;
 using ConstruApp.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace ConstruApp.API.Controllers;
 
@@ -15,6 +16,7 @@ public class ProyectosController : ControllerBase
 {
     private readonly IUnitOfWork       _uow;
     private readonly IAuditoriaService _auditoria;
+    private readonly CotizacionRequisitosOptions _requisitos;
 
     // Transiciones válidas: (estadoActual, rol) → [estadosPermitidos]
     private static readonly Dictionary<(EstadoProyecto, Rol), EstadoProyecto[]> Transiciones = new()
@@ -26,10 +28,47 @@ public class ProyectosController : ControllerBase
         { (EstadoProyecto.Publicado,    Rol.Admin),        [EstadoProyecto.Cancelado] },
     };
 
-    public ProyectosController(IUnitOfWork uow, IAuditoriaService auditoria)
+    public ProyectosController(IUnitOfWork uow, IAuditoriaService auditoria,
+        IOptions<CotizacionRequisitosOptions> requisitos)
     {
         _uow       = uow;
         _auditoria = auditoria;
+        _requisitos = requisitos.Value;
+    }
+
+    // Los borradores parciales se guardan por una vía explícita; Create conserva HU-014.
+    [HttpPost("borradores")]
+    public async Task<IActionResult> CrearBorrador([FromBody] ProyectoBorradorRequest req)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var (errores, tipo, propiedad) = await ValidarBorrador(req, userId);
+        if (errores.Count > 0) return BadRequest(new { message = "Corregí los datos del borrador.", errors = errores });
+
+        var proyecto = new Proyecto { ClienteId = userId, Estado = EstadoProyecto.Borrador };
+        AplicarBorrador(proyecto, req, tipo, propiedad);
+        await _uow.Proyectos.AddAsync(proyecto);
+        await _uow.SaveChangesAsync();
+        await AuditarBorrador(proyecto, "CrearBorrador");
+        return CreatedAtAction(nameof(GetById), new { id = proyecto.Id }, MapDto(proyecto));
+    }
+
+    [HttpPut("{id:int}/borrador")]
+    public async Task<IActionResult> GuardarBorrador(int id, [FromBody] ProyectoBorradorRequest req)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var proyecto = await _uow.Proyectos.GetByIdAsync(id);
+        if (proyecto is null) return NotFound();
+        if (proyecto.ClienteId != userId) return Forbid();
+        if (proyecto.Estado != EstadoProyecto.Borrador)
+            return BadRequest(new { message = "Solo se pueden guardar como borrador proyectos que aún no fueron enviados." });
+
+        var (errores, tipo, propiedad) = await ValidarBorrador(req, userId);
+        if (errores.Count > 0) return BadRequest(new { message = "Corregí los datos del borrador.", errors = errores });
+        AplicarBorrador(proyecto, req, tipo, propiedad);
+        await _uow.Proyectos.UpdateAsync(proyecto);
+        await _uow.SaveChangesAsync();
+        await AuditarBorrador(proyecto, "GuardarBorrador");
+        return Ok(MapDto(proyecto));
     }
 
     // GET api/proyectos  — proyectos del cliente autenticado
@@ -215,7 +254,7 @@ public class ProyectosController : ControllerBase
         p.PropiedadId,
         p.Titulo,
         p.Descripcion,
-        TipoProyecto   = p.TipoProyecto.ToString(),
+        TipoProyecto   = p.TipoProyecto?.ToString(),
         Estado         = p.Estado.ToString(),
         p.Canton,
         p.Provincia,
@@ -244,7 +283,7 @@ public class ProyectosController : ControllerBase
             errores["titulo"] = "El nombre del proyecto es obligatorio.";
         if (string.IsNullOrWhiteSpace(proyecto.Descripcion) || proyecto.Descripcion.Trim().Length < 20)
             errores["descripcion"] = "La descripción debe tener al menos 20 caracteres.";
-        if (!Enum.IsDefined(proyecto.TipoProyecto))
+        if (!proyecto.TipoProyecto.HasValue || !Enum.IsDefined(proyecto.TipoProyecto.Value))
             errores["tipoProyecto"] = "Seleccioná un tipo de trabajo válido.";
         if (!proyecto.PropiedadId.HasValue)
             errores["propiedadId"] = "Seleccioná la propiedad donde se realizará el proyecto.";
@@ -261,6 +300,16 @@ public class ProyectosController : ControllerBase
         if (proyecto.FechaInicio.HasValue && proyecto.FechaFin.HasValue && proyecto.FechaFin < proyecto.FechaInicio)
             errores["fechaFin"] = "La fecha de finalización no puede ser anterior a la fecha de inicio.";
 
+        var requeridos = _requisitos.Requeridos(proyecto.TipoProyecto);
+        if (requeridos.Length > 0)
+        {
+            var archivos = await _uow.Archivos.FindAsync(a => a.ProyectoId == id);
+            var presentes = archivos.Where(a => !string.IsNullOrWhiteSpace(a.Url))
+                .Select(CotizacionRequisitosOptions.CategoriaDe).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var requerido in requeridos.Where(r => !presentes.Contains(r)))
+                errores[$"documentos.{requerido}"] = $"Adjuntá el documento obligatorio: {requerido}.";
+        }
+
         if (errores.Count > 0)
             return BadRequest(new { message = "Completá o corregí la información antes de enviar el proyecto.", errors = errores });
 
@@ -274,6 +323,48 @@ public class ProyectosController : ControllerBase
             "Proyecto enviado de borrador a proceso de cotización.");
         return Ok(MapDto(proyecto));
     }
+
+    private async Task<(Dictionary<string, string> Errores, TipoProyecto? Tipo, Propiedad? Propiedad)>
+        ValidarBorrador(ProyectoBorradorRequest req, int userId)
+    {
+        var errores = new Dictionary<string, string>();
+        TipoProyecto? tipo = null;
+        if (!string.IsNullOrWhiteSpace(req.TipoProyecto))
+        {
+            if (Enum.TryParse<TipoProyecto>(req.TipoProyecto, true, out var valor) && Enum.IsDefined(valor))
+                tipo = valor;
+            else errores["tipoProyecto"] = "Seleccioná un tipo de trabajo válido.";
+        }
+        var propiedad = await GetPropiedadDelCliente(req.PropiedadId, userId);
+        if (req.PropiedadId.HasValue && propiedad is null)
+            errores["propiedadId"] = "La propiedad seleccionada no existe o no pertenece al cliente.";
+        if (req.Titulo?.Trim().Length > 200) errores["titulo"] = "El nombre admite hasta 200 caracteres.";
+        if (req.Descripcion?.Trim().Length > 3000) errores["descripcion"] = "La descripción admite hasta 3000 caracteres.";
+        if (req.AreaM2 is <= 0 or > 99999999.99m) errores["areaM2"] = "El área debe ser positiva y menor que 100000000 m².";
+        if (req.PresupuestoMax is <= 0 or > 9999999999999999.99m) errores["presupuestoMax"] = "El presupuesto está fuera del rango permitido.";
+        if (req.FechaInicio.HasValue && req.FechaFin.HasValue && req.FechaFin < req.FechaInicio)
+            errores["fechaFin"] = "La fecha de finalización no puede ser anterior a la fecha de inicio.";
+        return (errores, tipo, propiedad);
+    }
+
+    private static void AplicarBorrador(Proyecto proyecto, ProyectoBorradorRequest req,
+        TipoProyecto? tipo, Propiedad? propiedad)
+    {
+        proyecto.Titulo = req.Titulo?.Trim() ?? "";
+        proyecto.Descripcion = req.Descripcion?.Trim() ?? "";
+        proyecto.TipoProyecto = tipo;
+        proyecto.PropiedadId = propiedad?.Id;
+        proyecto.Provincia = propiedad?.Provincia;
+        proyecto.Canton = propiedad?.Canton;
+        proyecto.Distrito = propiedad?.Distrito;
+        proyecto.AreaM2 = req.AreaM2;
+        proyecto.PresupuestoMax = req.PresupuestoMax;
+        proyecto.FechaInicio = req.FechaInicio;
+        proyecto.FechaFin = req.FechaFin;
+    }
+
+    private Task AuditarBorrador(Proyecto proyecto, string accion) => _auditoria.RegistrarAsync(
+        proyecto.ClienteId, User.FindFirstValue("nombre") ?? "", accion, "Proyectos", proyecto.Id.ToString());
 
     private async Task<Propiedad?> GetPropiedadDelCliente(int? propiedadId, int clienteId)
     {
@@ -330,3 +421,8 @@ public record ProyectoRequest(
 );
 
 public record CambiarEstadoRequest(string Estado);
+
+public record ProyectoBorradorRequest(
+    string? Titulo = null, string? Descripcion = null, string? TipoProyecto = null,
+    int? PropiedadId = null, decimal? AreaM2 = null, decimal? PresupuestoMax = null,
+    DateTime? FechaInicio = null, DateTime? FechaFin = null);
