@@ -203,6 +203,13 @@ app.MapGet("/api/health", async (AppDbContext db) =>
 
 app.UseCors("AppPolicy");
 app.UseRateLimiter();
+// Crear y configurar la misma raíz usada por los adjuntos, incluso en una instalación nueva.
+var raizWeb = app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+Directory.CreateDirectory(raizWeb);
+var proveedorWeb = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(raizWeb);
+app.Environment.WebRootPath = raizWeb;
+app.Environment.WebRootFileProvider = proveedorWeb;
+app.Lifetime.ApplicationStopped.Register(proveedorWeb.Dispose);
 app.UseStaticFiles();
 if (app.Environment.IsDevelopment())
     app.UseHttpsRedirection();

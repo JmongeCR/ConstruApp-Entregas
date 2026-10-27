@@ -34,7 +34,8 @@ import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import CheckCircleIcon       from '@mui/icons-material/CheckCircle';
 import DownloadIcon          from '@mui/icons-material/Download';
 import { useAuth } from '../../context/AuthContext';
-import { proyectosApi, avancesApi, documentosApi, ordenesApi } from '../../api/endpoints';
+import { leerAdjuntosAvance, validarAvance } from '../../utils/avancesAdjuntos';
+import { avancesApi, documentosApi, ordenesApi } from '../../api/endpoints';
 
 const ACCENT   = '#2563EB';
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:5115';
@@ -77,11 +78,12 @@ function ActionBtn({ icon, label, sublabel, color = ACCENT, onClick, disabled })
 function ProyectoSelector({ onSelect }) {
   const [proyectos, setProyectos] = useState([]);
   const [loading,   setLoading]   = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    proyectosApi.getMios()
-      .then(r => setProyectos(r.data?.filter(p => p.estado === 'EnCurso') ?? []))
-      .catch(() => {})
+    avancesApi.getProyectos()
+      .then(r => setProyectos(r.data ?? []))
+      .catch(e => setError(e.response?.data?.message ?? 'No fue posible consultar los proyectos asignados.'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -91,6 +93,7 @@ function ProyectoSelector({ onSelect }) {
     </Box>
   );
 
+  if (error) return <Alert severity="error">{error}</Alert>;
   if (proyectos.length === 0) return (
     <Box sx={{ textAlign: 'center', mt: 6, px: 3 }}>
       <ConstructionIcon sx={{ fontSize: 56, color: '#CBD5E1', mb: 2 }} />
@@ -118,7 +121,7 @@ function ProyectoSelector({ onSelect }) {
               {[p.canton, p.provincia].filter(Boolean).join(', ')}
               {p.areaM2 && ` · ${p.areaM2} m²`}
             </Typography>
-            <Chip label="En curso" size="small"
+            <Chip label={p.estado === 'EnCurso' ? 'En curso' : 'Completado'} size="small"
               sx={{ mt: 1, bgcolor: '#DBEAFE', color: '#1D4ED8', fontWeight: 700, fontSize: 11 }} />
           </Box>
         ))}
@@ -133,26 +136,28 @@ function RegistrarAvance({ proyecto, onBack, notify }) {
   const [form,   setForm]   = useState({ titulo:'', descripcion:'', responsable:'', porcentajeAvance:50 });
   const [fotos,  setFotos]  = useState([]);
   const [saving, setSaving] = useState(false);
+  const [leyendo, setLeyendo] = useState(false);
 
-  const handleFoto = (e) => {
-    Array.from(e.target.files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = ev => setFotos(prev => [...prev, { file, preview: ev.target.result, base64: ev.target.result }]);
-      reader.readAsDataURL(file);
-    });
+  const handleFoto = async (e) => {
+    const files = Array.from(e.target.files);
     e.target.value = '';
+    setLeyendo(true);
+    try { const nuevos = await leerAdjuntosAvance(files, fotos.length); setFotos(prev => [...prev, ...nuevos]); }
+    catch (error) { notify(error.message, 'error'); }
+    finally { setLeyendo(false); }
   };
 
   const handleGuardar = async () => {
-    if (!form.titulo) return;
+    const error = validarAvance(form);
+    if (error) { notify(error, 'error'); return; }
     setSaving(true);
     try {
       await avancesApi.create({
         proyectoId:       proyecto.id,
-        titulo:           form.titulo,
+        titulo:           form.titulo.trim(),
         descripcion:      form.descripcion,
         responsable:      form.responsable || null,
-        porcentajeAvance: parseInt(form.porcentajeAvance),
+        porcentajeAvance: Number(form.porcentajeAvance),
         fotos: fotos.map(f => ({ base64: f.base64, nombre: f.file.name, tipo: f.file.type.startsWith('video') ? 'video' : 'foto', tamanioBytes: f.file.size })),
       });
       notify('✅ Avance registrado');
@@ -188,18 +193,18 @@ function RegistrarAvance({ proyecto, onBack, notify }) {
 
       {/* Fotos */}
       <Box>
-        <input ref={fileRef} type="file" accept="image/*,video/*" multiple hidden onChange={handleFoto} capture="environment" />
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" multiple hidden disabled={leyendo || saving} onChange={handleFoto} capture="environment" />
         <Button fullWidth variant="outlined" size="large" startIcon={<CameraAltIcon />}
-          onClick={() => fileRef.current.click()}
+          disabled={leyendo || saving} onClick={() => fileRef.current.click()}
           sx={{ py: 1.5, fontSize: 15, borderRadius: '12px', borderWidth: 2,
             '&:hover': { borderWidth: 2 } }}>
-          Tomar foto / video
+          {leyendo ? 'Leyendo archivos…' : 'Foto / video (máx. 4, 5 MB cada uno)'}
         </Button>
         {fotos.length > 0 && (
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
             {fotos.map((f, i) => (
               <Box key={i} sx={{ position: 'relative' }}>
-                <Box component="img" src={f.preview}
+                <Box component={f.file.type.startsWith('video/') ? 'video' : 'img'} src={f.preview}
                   sx={{ width: 72, height: 72, objectFit: 'cover', borderRadius: '10px', border: '2px solid #E2E8F0' }} />
                 <IconButton size="small" onClick={() => setFotos(prev => prev.filter((_, idx) => idx !== i))}
                   sx={{ position: 'absolute', top: -8, right: -8, bgcolor: '#fff', p: '2px',
@@ -213,7 +218,7 @@ function RegistrarAvance({ proyecto, onBack, notify }) {
       </Box>
 
       <Button fullWidth variant="contained" size="large" onClick={handleGuardar}
-        disabled={saving || !form.titulo}
+        disabled={saving || leyendo || !form.titulo.trim()}
         sx={{ py: 2, fontSize: 16, fontWeight: 700, borderRadius: '14px',
           bgcolor: ACCENT, '&:hover': { bgcolor: '#1D4ED8' } }}>
         {saving ? <CircularProgress size={22} color="inherit" /> : '✅ Guardar avance'}
@@ -226,11 +231,12 @@ function RegistrarAvance({ proyecto, onBack, notify }) {
 function VerAvances({ proyecto }) {
   const [avances,  setAvances]  = useState([]);
   const [loading,  setLoading]  = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     avancesApi.getByProyecto(proyecto.id)
       .then(r => setAvances(r.data ?? []))
-      .catch(() => {})
+      .catch(e => setError(e.response?.data?.message ?? 'No fue posible consultar los avances.'))
       .finally(() => setLoading(false));
   }, [proyecto.id]);
 
@@ -238,6 +244,7 @@ function VerAvances({ proyecto }) {
   const pct    = ultimo?.porcentajeAvance ?? 0;
 
   if (loading) return <LinearProgress />;
+  if (error) return <Alert severity="error">{error}</Alert>;
 
   return (
     <Box>
@@ -452,6 +459,7 @@ export default function CampoApp() {
                 sublabel="+ foto/video"
                 color={ACCENT}
                 onClick={() => setView('avance')}
+                disabled={!proyecto.puedeRegistrar}
               />
               <ActionBtn
                 icon={<TimelineIcon sx={{ fontSize: 26, color: '#7C3AED' }} />}

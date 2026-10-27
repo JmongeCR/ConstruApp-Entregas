@@ -2,6 +2,7 @@ using System.Security.Claims;
 using ConstruApp.Core.Entities;
 using ConstruApp.Core.Enums;
 using ConstruApp.Core.Interfaces;
+using ConstruApp.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,6 +14,7 @@ namespace ConstruApp.API.Controllers;
 public sealed class AvancesController : ControllerBase
 {
     private const int MaxFotoBytes = 5 * 1024 * 1024;
+    private const int MaxAdjuntos = 4;
     private static readonly HashSet<string> TiposPermitidos = new(StringComparer.OrdinalIgnoreCase)
     {
         "image/jpeg", "image/png", "image/webp", "video/mp4", "video/webm"
@@ -20,11 +22,40 @@ public sealed class AvancesController : ControllerBase
 
     private readonly IUnitOfWork _uow;
     private readonly IWebHostEnvironment _environment;
+    private readonly IAuditoriaService _auditoria;
+    private readonly ILogger<AvancesController> _logger;
 
-    public AvancesController(IUnitOfWork uow, IWebHostEnvironment environment)
+    public AvancesController(IUnitOfWork uow, IWebHostEnvironment environment,
+        IAuditoriaService auditoria, ILogger<AvancesController> logger)
     {
         _uow = uow;
         _environment = environment;
+        _auditoria = auditoria;
+        _logger = logger;
+    }
+
+    [HttpGet("proyectos")]
+    public async Task<IActionResult> GetProyectos()
+    {
+        var userId = GetUserId();
+        var admin = User.IsInRole("Admin");
+        var cliente = User.IsInRole("Cliente");
+        var constructor = User.IsInRole("Constructor");
+        if (!admin && !cliente && !constructor) return Forbid();
+        var perfil = constructor
+            ? (await _uow.PerfilesConstructor.FindAsync(p => p.UsuarioId == userId)).FirstOrDefault() : null;
+        var perfilId = perfil?.Id ?? -1;
+        var propuestas = await _uow.Propuestas.FindAsync(p => (admin || (constructor && p.ConstructorId == perfilId)) &&
+            (p.Estado == EstadoPropuesta.Aceptada || p.Estado == EstadoPropuesta.Finalizada));
+        var visibles = propuestas.Select(p => p.ProyectoId).ToArray();
+        var activos = propuestas.Where(p => p.Estado == EstadoPropuesta.Aceptada).Select(p => p.ProyectoId).ToHashSet();
+        var proyectos = await _uow.Proyectos.FindAsync(p => (p.Estado == EstadoProyecto.EnCurso || p.Estado == EstadoProyecto.Completado) &&
+            (admin || (cliente && p.ClienteId == userId) || (constructor && visibles.Contains(p.Id))));
+        return Ok(proyectos.OrderBy(p => p.Titulo).ThenBy(p => p.Id).Select(p => new
+        {
+            p.Id, p.Titulo, p.Provincia, p.Canton, p.AreaM2, estado = p.Estado.ToString(),
+            puedeRegistrar = p.Estado == EstadoProyecto.EnCurso && (admin || constructor) && activos.Contains(p.Id),
+        }));
     }
 
     [HttpGet("proyecto/{proyectoId:int}")]
@@ -35,18 +66,15 @@ public sealed class AvancesController : ControllerBase
         if (!await PuedeVerProyecto(proyecto)) return Forbid();
 
         var avances = (await _uow.AvancesObra.FindAsync(a => a.ProyectoId == proyectoId))
-            .OrderByDescending(a => a.Fecha).ToList();
-        var resultados = new List<object>();
-        foreach (var avance in avances)
-        {
-            var fotos = await _uow.FotosAvance.FindAsync(f => f.AvanceObraId == avance.Id);
-            resultados.Add(Map(avance, fotos));
-        }
-        return Ok(resultados);
+            .OrderByDescending(a => a.Fecha).ThenByDescending(a => a.Id).ToList();
+        var ids = avances.Select(a => a.Id).ToArray();
+        var fotos = (await _uow.FotosAvance.FindAsync(f => ids.Contains(f.AvanceObraId))).ToLookup(f => f.AvanceObraId);
+        return Ok(avances.Select(avance => Map(avance, fotos[avance.Id])));
     }
 
     [HttpPost]
     [Authorize(Roles = "Constructor,Admin")]
+    [RequestSizeLimit(30 * 1024 * 1024)]
     public async Task<IActionResult> Create([FromBody] CrearAvanceRequest req)
     {
         if (req.ProyectoId <= 0)
@@ -57,7 +85,9 @@ public sealed class AvancesController : ControllerBase
             return BadRequest(new { message = "El título no puede superar 300 caracteres." });
         if (req.Descripcion?.Trim().Length > 3000)
             return BadRequest(new { message = "La descripción no puede superar 3.000 caracteres." });
-        if (req.PorcentajeAvance is < 0 or > 100)
+        if (req.Responsable?.Trim().Length > 200)
+            return BadRequest(new { message = "El responsable no puede superar 200 caracteres." });
+        if (req.PorcentajeAvance is null or < 0 or > 100)
             return BadRequest(new { message = "El porcentaje debe estar entre 0 y 100." });
 
         var proyecto = await _uow.Proyectos.GetByIdAsync(req.ProyectoId);
@@ -66,11 +96,19 @@ public sealed class AvancesController : ControllerBase
             return BadRequest(new { message = "Solo se pueden registrar avances en proyectos en curso." });
 
         var userId = GetUserId();
-        var perfil = (await _uow.PerfilesConstructor.FindAsync(p => p.UsuarioId == userId)).FirstOrDefault();
-        if (perfil is null) return BadRequest(new { message = "Primero debes registrar el perfil de la empresa." });
-        if (User.IsInRole("Constructor") &&
-            !await _uow.Propuestas.ExistsAsync(p => p.ProyectoId == req.ProyectoId && p.ConstructorId == perfil.Id && p.Estado == EstadoPropuesta.Aceptada))
-            return Forbid();
+        PerfilConstructor? perfil;
+        if (User.IsInRole("Admin"))
+        {
+            var asignacion = (await _uow.Propuestas.FindAsync(p => p.ProyectoId == proyecto.Id && p.Estado == EstadoPropuesta.Aceptada)).FirstOrDefault();
+            perfil = asignacion is null ? null : await _uow.PerfilesConstructor.GetByIdAsync(asignacion.ConstructorId);
+            if (perfil is null) return BadRequest(new { message = "El proyecto no tiene un constructor asignado mediante una propuesta aceptada." });
+        }
+        else
+        {
+            perfil = (await _uow.PerfilesConstructor.FindAsync(p => p.UsuarioId == userId)).FirstOrDefault();
+            if (perfil is null || !await _uow.Propuestas.ExistsAsync(p => p.ProyectoId == proyecto.Id && p.ConstructorId == perfil.Id && p.Estado == EstadoPropuesta.Aceptada))
+                return Forbid();
+        }
 
         var fotos = req.Fotos ?? [];
         var validacionFotos = ValidarFotos(fotos);
@@ -83,29 +121,25 @@ public sealed class AvancesController : ControllerBase
             Titulo = req.Titulo.Trim(),
             Descripcion = req.Descripcion?.Trim() ?? string.Empty,
             Responsable = string.IsNullOrWhiteSpace(req.Responsable) ? null : req.Responsable.Trim(),
-            PorcentajeAvance = req.PorcentajeAvance,
+            PorcentajeAvance = req.PorcentajeAvance.Value,
             Fecha = DateTime.UtcNow
         };
-        await _uow.AvancesObra.AddAsync(avance);
-        await _uow.SaveChangesAsync();
-
-        var raizWeb = _environment.WebRootPath ?? Path.Combine(AppContext.BaseDirectory, "wwwroot");
+        var raizWeb = _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
         var carpeta = Path.Combine(raizWeb, "uploads", "avances");
         var archivosCreados = new List<string>();
         try
         {
-            Directory.CreateDirectory(carpeta);
+            if (fotos.Count > 0) Directory.CreateDirectory(carpeta);
             foreach (var foto in fotos)
             {
                 var (bytes, mime) = Decodificar(foto.Base64);
                 var extension = mime switch { "image/jpeg" => ".jpg", "image/png" => ".png", "image/webp" => ".webp", "video/mp4" => ".mp4", _ => ".webm" };
                 var nombre = $"{Guid.NewGuid():N}{extension}";
                 var ruta = Path.Combine(carpeta, nombre);
-                await System.IO.File.WriteAllBytesAsync(ruta, bytes);
                 archivosCreados.Add(ruta);
-                await _uow.FotosAvance.AddAsync(new FotoAvance
+                await System.IO.File.WriteAllBytesAsync(ruta, bytes);
+                avance.Fotos.Add(new FotoAvance
                 {
-                    AvanceObraId = avance.Id,
                     Url = $"/uploads/avances/{nombre}",
                     NombreArchivo = Path.GetFileName(foto.Nombre ?? nombre),
                     Tipo = mime.StartsWith("video/", StringComparison.OrdinalIgnoreCase) ? "video" : "foto",
@@ -113,19 +147,17 @@ public sealed class AvancesController : ControllerBase
                     FechaSubida = DateTime.UtcNow
                 });
             }
+            await _uow.AvancesObra.AddAsync(avance);
             await _uow.SaveChangesAsync();
         }
         catch
         {
-            foreach (var ruta in archivosCreados)
-                if (System.IO.File.Exists(ruta)) System.IO.File.Delete(ruta);
-            await _uow.AvancesObra.DeleteAsync(avance);
-            await _uow.SaveChangesAsync();
+            LimpiarArchivos(archivosCreados);
             throw;
         }
-
-        var fotosGuardadas = await _uow.FotosAvance.FindAsync(f => f.AvanceObraId == avance.Id);
-        return Created($"/api/avances/proyecto/{proyecto.Id}", Map(avance, fotosGuardadas));
+        await _auditoria.RegistrarAsync(userId, User.FindFirstValue("nombre") ?? "", "RegistrarAvance", "Avances",
+            avance.Id.ToString(), $"Proyecto {proyecto.Id}: {avance.Titulo}, {avance.PorcentajeAvance}%");
+        return Created($"/api/avances/proyecto/{proyecto.Id}", Map(avance, avance.Fotos));
     }
 
     [HttpDelete("{id:int}")]
@@ -139,18 +171,27 @@ public sealed class AvancesController : ControllerBase
             var userId = GetUserId();
             var perfil = (await _uow.PerfilesConstructor.FindAsync(p => p.UsuarioId == userId)).FirstOrDefault();
             if (perfil is null || avance.ConstructorId != perfil.Id) return Forbid();
+            var proyecto = await _uow.Proyectos.GetByIdAsync(avance.ProyectoId);
+            if (proyecto is null || proyecto.Estado != EstadoProyecto.EnCurso ||
+                !await _uow.Propuestas.ExistsAsync(p => p.ProyectoId == proyecto.Id && p.ConstructorId == perfil.Id && p.Estado == EstadoPropuesta.Aceptada))
+                return Forbid();
         }
 
         var fotos = await _uow.FotosAvance.FindAsync(f => f.AvanceObraId == id);
+        var rutas = new List<string>();
         foreach (var foto in fotos)
         {
-            var raizWeb = _environment.WebRootPath ?? Path.Combine(AppContext.BaseDirectory, "wwwroot");
-            var ruta = Path.Combine(raizWeb, "uploads", "avances", Path.GetFileName(foto.Url));
-            if (System.IO.File.Exists(ruta)) System.IO.File.Delete(ruta);
-            await _uow.FotosAvance.DeleteAsync(foto);
+            var raizWeb = _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
+            var nombre = Path.GetFileName(foto.Url);
+            if (foto.Url == $"/uploads/avances/{nombre}" && Guid.TryParseExact(Path.GetFileNameWithoutExtension(nombre), "N", out _))
+                rutas.Add(Path.Combine(raizWeb, "uploads", "avances", nombre));
+            var fotoActual = await _uow.FotosAvance.GetByIdAsync(foto.Id);
+            if (fotoActual is not null) await _uow.FotosAvance.DeleteAsync(fotoActual);
         }
         await _uow.AvancesObra.DeleteAsync(avance);
         await _uow.SaveChangesAsync();
+        LimpiarArchivos(rutas);
+        await _auditoria.RegistrarAsync(GetUserId(), User.FindFirstValue("nombre") ?? "", "EliminarAvance", "Avances", id.ToString());
         return NoContent();
     }
 
@@ -162,15 +203,21 @@ public sealed class AvancesController : ControllerBase
         if (User.IsInRole("Constructor"))
         {
             var perfil = (await _uow.PerfilesConstructor.FindAsync(p => p.UsuarioId == userId)).FirstOrDefault();
-            return perfil is not null && await _uow.Propuestas.ExistsAsync(p => p.ProyectoId == proyecto.Id && p.ConstructorId == perfil.Id && p.Estado == EstadoPropuesta.Aceptada);
+            return perfil is not null && await _uow.Propuestas.ExistsAsync(p => p.ProyectoId == proyecto.Id && p.ConstructorId == perfil.Id &&
+                (p.Estado == EstadoPropuesta.Aceptada || p.Estado == EstadoPropuesta.Finalizada));
         }
         return false;
     }
 
-    private static string? ValidarFotos(IEnumerable<FotoAvanceRequest> fotos)
+    private static string? ValidarFotos(List<FotoAvanceRequest> fotos)
     {
+        if (fotos.Count > MaxAdjuntos) return "Podés adjuntar hasta 4 fotos o videos por avance.";
         foreach (var foto in fotos)
         {
+            if (foto is null) return "Uno de los archivos seleccionados no es válido.";
+            if (foto.Nombre?.Length > 200) return "El nombre de cada archivo admite hasta 200 caracteres.";
+            if (foto.Base64 is null || foto.Base64.Length > ((MaxFotoBytes + 2) / 3) * 4 + 64)
+                return "Cada foto o video debe pesar 5 MB o menos.";
             try
             {
                 var (bytes, mime) = Decodificar(foto.Base64);
@@ -204,8 +251,9 @@ public sealed class AvancesController : ControllerBase
             var comma = base64.IndexOf(',');
             if (comma < 0) throw new FormatException();
             var metadata = base64[..comma];
+            if (!metadata.EndsWith(";base64", StringComparison.OrdinalIgnoreCase)) throw new FormatException();
             var separator = metadata.IndexOf(';');
-            mime = separator > 5 ? metadata[5..separator] : "";
+            mime = separator > 5 ? metadata[5..separator].ToLowerInvariant() : "";
             data = base64[(comma + 1)..];
         }
         var bytes = Convert.FromBase64String(data);
@@ -214,6 +262,16 @@ public sealed class AvancesController : ControllerBase
     }
 
     private int GetUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+    private void LimpiarArchivos(IEnumerable<string> rutas)
+    {
+        foreach (var ruta in rutas)
+        {
+            try { if (System.IO.File.Exists(ruta)) System.IO.File.Delete(ruta); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            { _logger.LogWarning(ex, "No fue posible limpiar un adjunto de avances: {Ruta}", ruta); }
+        }
+    }
 
     private static object Map(AvanceObra a, IEnumerable<FotoAvance> fotos) => new
     {
@@ -229,7 +287,7 @@ public sealed class CrearAvanceRequest
     public string Titulo { get; set; } = string.Empty;
     public string? Descripcion { get; set; }
     public string? Responsable { get; set; }
-    public int PorcentajeAvance { get; set; }
+    public int? PorcentajeAvance { get; set; }
     public List<FotoAvanceRequest>? Fotos { get; set; }
 }
 
