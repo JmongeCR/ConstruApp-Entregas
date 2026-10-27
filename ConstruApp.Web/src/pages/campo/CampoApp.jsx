@@ -157,7 +157,7 @@ function RegistrarAvance({ proyecto, onBack, notify }) {
       });
       notify('✅ Avance registrado');
       onBack();
-    } catch { notify('Error al guardar', 'error'); }
+    } catch (e) { notify(e.response?.data?.message || 'No se pudo registrar el avance.', 'error'); }
     finally { setSaving(false); }
   };
 
