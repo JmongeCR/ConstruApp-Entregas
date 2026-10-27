@@ -25,12 +25,16 @@ export const proyectosApi = {
   getPublicados: (params)      => api.get('/proyectos/publicados', { params }),
   getById:       (id)          => api.get(`/proyectos/${id}`),
   create:        (data)        => api.post('/proyectos', data),
+  crearBorrador: (data)        => api.post('/proyectos/borradores', data),
+  guardarBorrador: (id, data)  => api.put(`/proyectos/${id}/borrador`, data),
   update:        (id, data)    => api.put(`/proyectos/${id}`, data),
   publicar:      (id)          => api.put(`/proyectos/${id}/publicar`),
+  enviarACotizacion: (id)      => api.put(`/proyectos/${id}/enviar-cotizacion`),
   cambiarEstado: (id, estado)  => api.put(`/proyectos/${id}/estado`, { estado }),
   delete:        (id)          => api.delete(`/proyectos/${id}`),
   getFotos:      (id)          => api.get(`/proyectos/${id}/fotos`),
   subirFoto:     (id, data)    => api.post(`/proyectos/${id}/fotos`, data),
+  sugerirPrecios:(id)          => api.post(`/proyectos/${id}/sugerencia-precios`),
 };
 
 // ── Propiedades del cliente ──────────────────────────────────────────────────
@@ -67,6 +71,7 @@ export const cotizacionIAApi = {
 
 // ── Propuestas ────────────────────────────────────────────────────────────────
 export const propuestasApi = {
+  comparar: (pid, params)    => api.get(`/proyectos/${pid}/comparar-cotizaciones`, { params }),
   getByProyecto: (pid)        => api.get(`/propuestas/proyecto/${pid}`),
   getMias:       ()           => api.get('/propuestas/mis-propuestas'),
   getById:       (id)         => api.get(`/propuestas/${id}`),
