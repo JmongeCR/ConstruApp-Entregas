@@ -55,6 +55,9 @@ public sealed class ComparacionCotizacionesController(IUnitOfWork uow) : Control
         return Ok(new
         {
             proyectoId, titulo = proyecto.Titulo, moneda = "CRC", totalProyecto = todas.Count,
+            puedeSeleccionar = User.IsInRole("Cliente") && proyecto.ClienteId == userId &&
+                (proyecto.Estado is EstadoProyecto.Publicado or EstadoProyecto.EnPropuestas) &&
+                !todas.Any(p => p.Estado is EstadoPropuesta.Aceptada or EstadoPropuesta.Finalizada),
             total, page, size, puedeComparar = total >= 2,
             mensaje = todas.Count == 0 ? "Aún no hay cotizaciones para este proyecto."
                 : todas.Count == 1 ? "Solo hay una cotización para este proyecto. Podrás comparar cuando recibas otra."

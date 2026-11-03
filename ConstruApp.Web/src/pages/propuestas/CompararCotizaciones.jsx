@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Alert, Box, Button, CircularProgress, MenuItem, Stack, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
+  Dialog, DialogActions, DialogContent, DialogTitle, Radio,
 } from '@mui/material';
 import { propuestasApi } from '../../api/endpoints';
 
@@ -73,6 +74,31 @@ function Comparador({ proyectoId }) {
 function Resultados({ proyectoId, params, onPage }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [seleccion, setSeleccion] = useState(null);
+  const [confirmando, setConfirmando] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [errorSeleccion, setErrorSeleccion] = useState('');
+  const [confirmada, setConfirmada] = useState(false);
+  const propuesta = data?.items.find(item => item.id === seleccion);
+
+  const confirmar = async () => {
+    setGuardando(true);
+    setErrorSeleccion('');
+    try {
+      await propuestasApi.seleccionar(proyectoId, seleccion);
+      setData(prev => ({
+        ...prev,
+        puedeSeleccionar: false,
+        items: prev.items.map(item => item.id === seleccion ? { ...item, estado: 'Aceptada' } : item),
+      }));
+      setConfirmada(true);
+      setConfirmando(false);
+    } catch (e) {
+      setErrorSeleccion(e.response?.data?.message ?? 'No se pudo confirmar la propuesta.');
+    } finally {
+      setGuardando(false);
+    }
+  };
   useEffect(() => {
     let active = true;
     propuestasApi.comparar(proyectoId, params)
@@ -86,11 +112,19 @@ function Resultados({ proyectoId, params, onPage }) {
   return <>
     <Typography variant="h6" sx={{ mb: 1 }}>{data.titulo || 'Proyecto sin nombre'}</Typography>
     <Alert severity={data.puedeComparar ? 'success' : 'info'} sx={{ mb: 2 }}>{data.mensaje}</Alert>
+    {confirmada && <Alert severity="success" sx={{ mb: 2 }}
+      action={<Button component={Link} to={`/obra/${proyectoId}`}>Ver obra</Button>}>
+      Propuesta confirmada. La obra está en curso y se registró un aviso para cada parte.
+    </Alert>}
     {data.items.length > 0 && <TableContainer sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
       <Table size="small" aria-label="Comparación de cotizaciones de constructores" sx={{ minWidth: 1000 }}>
-        <TableHead><TableRow>{['Constructor', 'Monto (CRC)', 'Plazo estimado', 'Descripción y alcance', 'Incluye', 'Estado', 'Fecha de envío'].map(label =>
+        <TableHead><TableRow>{data.puedeSeleccionar && <TableCell>Elegir</TableCell>}{['Constructor', 'Monto (CRC)', 'Plazo estimado', 'Descripción y alcance', 'Incluye', 'Estado', 'Fecha de envío'].map(label =>
           <TableCell key={label}>{label}</TableCell>)}</TableRow></TableHead>
         <TableBody>{data.items.map(p => <TableRow key={p.id}>
+          {data.puedeSeleccionar && <TableCell><Radio name="propuesta" checked={seleccion === p.id}
+            disabled={!['Enviada', 'Vista'].includes(p.estado)}
+            onChange={() => { setSeleccion(p.id); setErrorSeleccion(''); }}
+            slotProps={{ input: { 'aria-label': `Elegir propuesta de ${p.constructor}` } }} /></TableCell>}
           <TableCell>{p.constructor}</TableCell><TableCell sx={{ whiteSpace: 'nowrap' }}>{money.format(p.montoTotal)}</TableCell>
           <TableCell>{p.plazoEstimadoDias > 0 ? `${p.plazoEstimadoDias} días` : 'Sin plazo informado'}</TableCell>
           <TableCell sx={{ whiteSpace: 'pre-wrap', minWidth: 220, overflowWrap: 'anywhere' }}>{p.descripcion || 'Sin descripción'}</TableCell>
@@ -99,6 +133,25 @@ function Resultados({ proyectoId, params, onPage }) {
         </TableRow>)}</TableBody>
       </Table>
     </TableContainer>}
+    {data.puedeSeleccionar && data.items.length > 0 && <Stack spacing={1} sx={{ mt: 2 }}>
+      {errorSeleccion && !confirmando && <Alert severity="error">{errorSeleccion}</Alert>}
+      <Button variant="contained" sx={{ alignSelf: 'start' }} onClick={() => {
+        if (!propuesta) { setErrorSeleccion('Elegí una propuesta antes de confirmar.'); return; }
+        setErrorSeleccion('');
+        setConfirmando(true);
+      }}>Confirmar selección</Button>
+    </Stack>}
+    <Dialog open={confirmando} onClose={() => { if (!guardando) setConfirmando(false); }}>
+      <DialogTitle>Confirmar contratación</DialogTitle>
+      <DialogContent>
+        <Typography>Vas a contratar a {propuesta?.constructor} por {money.format(propuesta?.montoTotal ?? 0)}.</Typography>
+        {errorSeleccion && <Alert severity="error" sx={{ mt: 2 }}>{errorSeleccion}</Alert>}
+      </DialogContent>
+      <DialogActions>
+        <Button disabled={guardando} onClick={() => setConfirmando(false)}>Cancelar</Button>
+        <Button disabled={guardando} variant="contained" onClick={confirmar}>Confirmar propuesta</Button>
+      </DialogActions>
+    </Dialog>
     <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 2 }}>
       <Button disabled={data.page <= 1} onClick={() => onPage(data.page - 1)}>Anterior</Button>
       <Typography variant="body2">Página {data.page} · {data.total} coincidencias de {data.totalProyecto} propuestas</Typography>

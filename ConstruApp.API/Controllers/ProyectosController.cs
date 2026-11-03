@@ -22,7 +22,7 @@ public class ProyectosController : ControllerBase
     private static readonly Dictionary<(EstadoProyecto, Rol), EstadoProyecto[]> Transiciones = new()
     {
         { (EstadoProyecto.Publicado,    Rol.Cliente),      [EstadoProyecto.Cancelado] },
-        { (EstadoProyecto.EnPropuestas, Rol.Cliente),      [EstadoProyecto.EnCurso, EstadoProyecto.Cancelado] },
+        { (EstadoProyecto.EnPropuestas, Rol.Cliente),      [EstadoProyecto.Cancelado] },
         { (EstadoProyecto.EnCurso,      Rol.Constructor),  [EstadoProyecto.Completado] },
         { (EstadoProyecto.EnCurso,      Rol.Admin),        [EstadoProyecto.Completado, EstadoProyecto.Cancelado] },
         { (EstadoProyecto.Publicado,    Rol.Admin),        [EstadoProyecto.Cancelado] },
