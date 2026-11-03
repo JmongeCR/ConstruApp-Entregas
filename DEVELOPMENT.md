@@ -76,6 +76,18 @@ ConstruApp.Tests         ← Depends on Core + Infrastructure. xUnit + Moq + EF 
 
 **Secrets:** `appsettings.json` has empty strings for all secrets. Real values go in `appsettings.Development.json` (git-ignored) or environment variables. At startup, `Program.cs` overrides config with env vars `GROQ_API_KEY`, `GEMINI_API_KEY`, `CONNECTION_STRING`, `JWT_SECRET_KEY`, `EMAIL_PASSWORD`, `EMAIL_USER`.
 
+**Entrevista en Cotizaciones IA.** El servidor lee `OPENAI_API_KEY` de su entorno. Si la clave
+se guardó localmente en `.env.local`, cargá esa variable en el proceso antes de iniciar el
+backend. `OpenAI__Model` permite cambiar el modelo compatible con texto, imágenes, PDF y salida
+estructurada. El valor predeterminado es `gpt-5-mini`.
+
+La migración `EntrevistasIa` guarda historial, ficha, hallazgos y alcance. Para estimar costos
+se usan los rangos de `EstimacionPrecios:PorTipo`. Para estimar plazo y tamaño de cuadrilla se
+configuran `MinM2Dia`, `MaxM2Dia` y `Personas` en `EstimacionAlcance:PorTipo:<TipoProyecto>`.
+Con un área confirmada, el plazo divide esa área entre ambos rendimientos y redondea hacia arriba.
+Los rendimientos corresponden a la cuadrilla configurada. Los valores ausentes quedan pendientes
+de estimar. El alcance conserva las observaciones y los nombres de los adjuntos analizados.
+
 **Database:** SQL Server 2022 in Docker (`construapp-sqlserver`). Auto-migrated on startup via `db.Database.Migrate()`. Seed data applied by `DatabaseSeeder.SeedAsync()` on every startup (idempotent — checks existence before inserting). Test users: `admin@test.com`, `cliente@test.com`, `constructor@test.com` — all with password `Test1234!`.
 
 ### Frontend — React 19 + Vite + MUI v9
