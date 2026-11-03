@@ -5,6 +5,7 @@ using ConstruApp.Core.Enums;
 using ConstruApp.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace ConstruApp.API.Controllers;
@@ -231,9 +232,28 @@ public class ProyectosController : ControllerBase
             });
 
         var estadoAnterior = proyecto.Estado.ToString();
+        if (nuevoEstado == EstadoProyecto.Completado)
+        {
+            var aceptadas = await _uow.Propuestas.FindAsync(p =>
+                p.ProyectoId == id && p.Estado == EstadoPropuesta.Aceptada);
+            foreach (var aceptada in aceptadas)
+            {
+                var propuesta = await _uow.Propuestas.GetByIdAsync(aceptada.Id);
+                if (propuesta?.Estado == EstadoPropuesta.Aceptada)
+                    propuesta.Estado = EstadoPropuesta.Finalizada;
+            }
+        }
+
         proyecto.Estado = nuevoEstado;
         await _uow.Proyectos.UpdateAsync(proyecto);
-        await _uow.SaveChangesAsync();
+        try
+        {
+            await _uow.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Conflict(new { message = "El estado cambió. Actualizá la página antes de volver a intentar." });
+        }
 
         await _auditoria.RegistrarAsync(userId, User.FindFirstValue("nombre") ?? rolStr,
             "CambiarEstadoProyecto", "Proyectos",

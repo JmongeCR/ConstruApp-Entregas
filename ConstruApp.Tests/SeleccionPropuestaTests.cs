@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ConstruApp.API.Controllers;
+using ConstruApp.API.Services;
 using ConstruApp.Core.Entities;
 using ConstruApp.Core.Enums;
 using ConstruApp.Infrastructure.Data;
@@ -7,6 +8,7 @@ using ConstruApp.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace ConstruApp.Tests.Unit;
 
@@ -107,6 +109,34 @@ public sealed class SeleccionPropuestaTests
         Assert.Equal(EstadoProyecto.Completado, (await db.Proyectos.FindAsync(1))!.Estado);
         Assert.IsType<NoContentResult>(await controller.Finalizar(10));
         Assert.Equal(1, await db.AuditoriaLogs.CountAsync(a => a.Accion == "FinalizarObra"));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AdminCompletionFinalizesAcceptedProposalWhenPresent(bool tienePropuestaAceptada)
+    {
+        using var db = CrearDatos();
+        if (tienePropuestaAceptada)
+            Assert.IsType<OkObjectResult>(await Seleccion(db).Seleccionar(1, new(10)));
+        else
+        {
+            (await db.Proyectos.FindAsync(1))!.Estado = EstadoProyecto.EnCurso;
+            await db.SaveChangesAsync();
+        }
+
+        var fechaRespuesta = (await db.Propuestas.FindAsync(10))!.FechaRespuesta;
+        db.ChangeTracker.Clear();
+        var controller = new ProyectosController(new UnitOfWork(db), new AuditoriaService(db),
+            Options.Create(new CotizacionRequisitosOptions())) { ControllerContext = Contexto(99, "Admin") };
+
+        Assert.IsType<OkObjectResult>(await controller.CambiarEstado(1, new("Completado")));
+        db.ChangeTracker.Clear();
+        Assert.Equal(EstadoProyecto.Completado, (await db.Proyectos.FindAsync(1))!.Estado);
+        var propuesta = (await db.Propuestas.FindAsync(10))!;
+        Assert.Equal(tienePropuestaAceptada ? EstadoPropuesta.Finalizada : EstadoPropuesta.Enviada, propuesta.Estado);
+        Assert.Equal(fechaRespuesta, propuesta.FechaRespuesta);
+        Assert.Equal(EstadoPropuesta.Enviada, (await db.Propuestas.FindAsync(11))!.Estado);
     }
 
     private static SeleccionPropuestaController Seleccion(AppDbContext db, int usuario = 7) =>
