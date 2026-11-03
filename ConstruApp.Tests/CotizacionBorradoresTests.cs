@@ -171,6 +171,28 @@ public class CotizacionBorradoresTests
         Assert.Contains("[TipoProyecto] = N'Otro'", rollback);
     }
 
+    [Fact]
+    public async Task Update_SubmittedProjectCannotChangeToTypeWithMissingDocuments()
+    {
+        using var fixture = new Fixture(new() { DocumentosPorTipo = new() { ["ObraGris"] = ["Plano"] } });
+        var proyecto = await fixture.CreateCompleteDraft();
+        Assert.IsType<OkObjectResult>(await fixture.Controller.EnviarACotizacion(proyecto.Id));
+        var req = new ProyectoRequest(proyecto.Titulo, proyecto.Descripcion, "ObraGris",
+            null, null, null, null, null, null, null, proyecto.PropiedadId);
+        Assert.IsType<BadRequestObjectResult>(await fixture.Controller.Update(proyecto.Id, req));
+        Assert.Equal(TipoProyecto.Remodelacion, proyecto.TipoProyecto);
+    }
+
+    [Fact]
+    public async Task Create_RejectsDescriptionBeyondDatabaseLimit()
+    {
+        using var fixture = new Fixture();
+        var req = new ProyectoRequest("Cocina", new string('x', 3001), "Remodelacion",
+            null, null, null, null, null, null, null, 4);
+        Assert.IsType<BadRequestObjectResult>(await fixture.Controller.Create(req));
+        Assert.Empty(await fixture.Db.Proyectos.ToListAsync());
+    }
+
     private static JsonElement Json(ObjectResult result) => JsonSerializer.SerializeToElement(result.Value);
 
     private sealed class Fixture : IDisposable
