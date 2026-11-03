@@ -23,7 +23,6 @@ public class ProyectosController : ControllerBase
     {
         { (EstadoProyecto.Publicado,    Rol.Cliente),      [EstadoProyecto.Cancelado] },
         { (EstadoProyecto.EnPropuestas, Rol.Cliente),      [EstadoProyecto.Cancelado] },
-        { (EstadoProyecto.EnCurso,      Rol.Constructor),  [EstadoProyecto.Completado] },
         { (EstadoProyecto.EnCurso,      Rol.Admin),        [EstadoProyecto.Completado, EstadoProyecto.Cancelado] },
         { (EstadoProyecto.Publicado,    Rol.Admin),        [EstadoProyecto.Cancelado] },
     };
@@ -220,8 +219,7 @@ public class ProyectosController : ControllerBase
 
         // Solo el dueño del proyecto o un Admin puede operar
         var esAdmin = rol == Rol.Admin;
-        var esConstructor = rol == Rol.Constructor;
-        if (!esAdmin && proyecto.ClienteId != userId && !esConstructor)
+        if (!esAdmin && proyecto.ClienteId != userId)
             return Forbid();
 
         // Validar transición permitida

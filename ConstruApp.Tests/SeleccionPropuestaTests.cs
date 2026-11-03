@@ -71,11 +71,49 @@ public sealed class SeleccionPropuestaTests
         Assert.False(constructor.Leida);
     }
 
+    [Fact]
+    public async Task OnlyProjectOwnerCanRejectPendingProposal()
+    {
+        using var db = CrearDatos();
+        var controller = new EstadoPropuestaController(new UnitOfWork(db)) { ControllerContext = Contexto(99) };
+        Assert.IsType<ForbidResult>(await controller.CambiarEstado(10, new("Rechazada")));
+        controller.ControllerContext = Contexto(7);
+        Assert.IsType<BadRequestObjectResult>(await controller.CambiarEstado(10, new("Aceptada")));
+        Assert.IsType<NoContentResult>(await controller.CambiarEstado(10, new("Rechazada")));
+        db.ChangeTracker.Clear();
+        var propuesta = (await db.Propuestas.FindAsync(10))!;
+        Assert.Equal(EstadoPropuesta.Rechazada, propuesta.Estado);
+        Assert.NotNull(propuesta.FechaRespuesta);
+        Assert.IsType<NoContentResult>(await controller.CambiarEstado(10, new("Rechazada")));
+        Assert.IsType<ConflictObjectResult>(await Seleccion(db).Seleccionar(1, new(10)));
+        Assert.Equal(EstadoProyecto.EnPropuestas, (await db.Proyectos.FindAsync(1))!.Estado);
+        Assert.Single(await db.AuditoriaLogs.ToListAsync());
+    }
+
+    [Fact]
+    public async Task OnlyAssignedConstructorCanFinalizeAcceptedProposalAndProject()
+    {
+        using var db = CrearDatos();
+        var controller = new EstadoPropuestaController(new UnitOfWork(db)) { ControllerContext = Contexto(21, "Constructor") };
+        Assert.IsType<ConflictObjectResult>(await controller.Finalizar(10));
+        Assert.IsType<OkObjectResult>(await Seleccion(db).Seleccionar(1, new(10)));
+        Assert.IsType<ConflictObjectResult>(await controller.Finalizar(11));
+        controller.ControllerContext = Contexto(99, "Constructor");
+        Assert.IsType<ForbidResult>(await controller.Finalizar(10));
+        controller.ControllerContext = Contexto(21, "Constructor");
+        Assert.IsType<NoContentResult>(await controller.Finalizar(10));
+        db.ChangeTracker.Clear();
+        Assert.Equal(EstadoPropuesta.Finalizada, (await db.Propuestas.FindAsync(10))!.Estado);
+        Assert.Equal(EstadoProyecto.Completado, (await db.Proyectos.FindAsync(1))!.Estado);
+        Assert.IsType<NoContentResult>(await controller.Finalizar(10));
+        Assert.Equal(1, await db.AuditoriaLogs.CountAsync(a => a.Accion == "FinalizarObra"));
+    }
+
     private static SeleccionPropuestaController Seleccion(AppDbContext db, int usuario = 7) =>
         new(new UnitOfWork(db)) { ControllerContext = Contexto(usuario) };
 
-    private static ControllerContext Contexto(int usuario) =>
-        new() { HttpContext = new DefaultHttpContext { User = ComparacionCotizacionesTests.User(usuario) } };
+    private static ControllerContext Contexto(int usuario, string rol = "Cliente") =>
+        new() { HttpContext = new DefaultHttpContext { User = ComparacionCotizacionesTests.User(usuario, rol) } };
 
     private static AppDbContext CrearDatos()
     {
