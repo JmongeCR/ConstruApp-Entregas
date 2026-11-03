@@ -506,6 +506,38 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.ToTable("Empleados");
                 });
 
+            modelBuilder.Entity("ConstruApp.Core.Entities.EntrevistaIa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ActualizadaUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ClienteId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Datos")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ProyectoId")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProyectoId");
+
+                    b.HasIndex("ClienteId", "ActualizadaUtc");
+
+                    b.ToTable("EntrevistasIa");
+                });
+
             modelBuilder.Entity("ConstruApp.Core.Entities.Factura", b =>
                 {
                     b.Property<int>("Id")
@@ -1551,6 +1583,7 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(3000)");
 
                     b.Property<string>("Estado")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
@@ -1611,17 +1644,18 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Estado")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("FechaEnvioCotizacion")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("FechaFin")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("FechaInicio")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("FechaEnvioCotizacion")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime>("FechaPublicacion")
@@ -2181,6 +2215,22 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Constructor");
+                });
+
+            modelBuilder.Entity("ConstruApp.Core.Entities.EntrevistaIa", b =>
+                {
+                    b.HasOne("ConstruApp.Core.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("ClienteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ConstruApp.Core.Entities.Proyecto", "Proyecto")
+                        .WithMany()
+                        .HasForeignKey("ProyectoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Proyecto");
                 });
 
             modelBuilder.Entity("ConstruApp.Core.Entities.Factura", b =>

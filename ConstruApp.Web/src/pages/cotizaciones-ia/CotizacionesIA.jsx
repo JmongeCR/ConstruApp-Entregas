@@ -26,6 +26,8 @@ import CalendarTodayIcon        from '@mui/icons-material/CalendarToday';
 import { PDFDownloadLink }      from '@react-pdf/renderer';
 import { CotizacionPDF }        from '../../utils/pdf/CotizacionPDF';
 import { cotizacionIAApi }      from '../../api/endpoints';
+import { useAuth }              from '../../context/AuthContext';
+import EntrevistaProyecto       from './EntrevistaProyecto';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const fmt  = n => (n ?? 0).toLocaleString('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 });
@@ -265,6 +267,7 @@ function ComparacionModal({ ids, onClose }) {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function CotizacionesIA() {
+  const { usuario } = useAuth();
   const navigate    = useNavigate();
   const [rows,      setRows]      = useState([]);
   const [total,     setTotal]     = useState(0);
@@ -365,6 +368,8 @@ export default function CotizacionesIA() {
           )}
         </Box>
       </Box>
+
+      {usuario?.rol === 'Cliente' && <EntrevistaProyecto />}
 
       {/* ── Barra de búsqueda y filtros ──────────────────────────────────────── */}
       <Box sx={{ bgcolor: 'white', border: '1px solid #E2E8F0', borderRadius: 2, p: 2, mb: 2.5 }}>

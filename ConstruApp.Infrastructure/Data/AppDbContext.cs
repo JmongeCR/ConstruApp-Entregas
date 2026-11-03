@@ -15,6 +15,7 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
     public DbSet<FotoPropiedad>     FotosPropiedad      => Set<FotoPropiedad>();
     public DbSet<ArchivoProyecto>   Archivos            => Set<ArchivoProyecto>();
     public DbSet<CotizacionIA>      CotizacionesIA      => Set<CotizacionIA>();
+    public DbSet<EntrevistaIa> EntrevistasIa => Set<EntrevistaIa>();
     public DbSet<LineaCotizacionIA> LineasCotizacion    => Set<LineaCotizacionIA>();
     public DbSet<Material>          Materiales          => Set<Material>();
     public DbSet<PrecioMaterial>    PreciosMaterial     => Set<PrecioMaterial>();
@@ -55,6 +56,14 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        builder.Entity<EntrevistaIa>(e =>
+        {
+            e.Property(x => x.Version).IsConcurrencyToken();
+            e.HasIndex(x => new { x.ClienteId, x.ActualizadaUtc });
+            e.HasOne<Usuario>().WithMany().HasForeignKey(x => x.ClienteId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Proyecto).WithMany().HasForeignKey(x => x.ProyectoId).OnDelete(DeleteBehavior.SetNull);
+        });
 
         // ── Renombrar tablas Identity ─────────────────────────────────────────
         builder.Entity<Usuario>().ToTable("Usuarios");
