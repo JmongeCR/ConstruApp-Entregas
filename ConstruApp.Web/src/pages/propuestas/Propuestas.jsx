@@ -366,6 +366,7 @@ export function MisPropuestas() {
   const [proyectos,  setProyectos]      = useState({});
   const [loading,    setLoading]        = useState(true);
   const [openForm,   setOpenForm]       = useState(false);
+  const [enviando, setEnviando] = useState(false);
   const [proyectoId, setProyectoId]     = useState('');
   const [proyectoInfo, setProyectoInfo] = useState(null);
   const [form, setForm]                 = useState({ montoTotal: '', descripcion: '', incluye: '', plazoEstimadoDias: '' });
@@ -428,6 +429,8 @@ export function MisPropuestas() {
   ];
 
   const handleEnviar = async () => {
+    if (enviando) return;
+    setEnviando(true);
     try {
       const { data } = await propuestasApi.create({
         proyectoId:        parseInt(proyectoId),
@@ -443,6 +446,8 @@ export function MisPropuestas() {
       notify('¡Propuesta enviada con éxito!');
     } catch (e) {
       notify(e.response?.data?.message || 'Error al enviar.', 'error');
+    } finally {
+      setEnviando(false);
     }
   };
 
@@ -712,8 +717,8 @@ export function MisPropuestas() {
         <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
           <Button onClick={() => setOpenForm(false)}>Cancelar</Button>
           <Button variant="contained" onClick={handleEnviar}
-            disabled={!form.montoTotal || !form.descripcion || !form.plazoEstimadoDias || (!proyectoInfo && !proyectoId)}>
-            Enviar propuesta
+            disabled={enviando || !form.montoTotal || !form.descripcion || !form.plazoEstimadoDias || (!proyectoInfo && !proyectoId)}>
+            {enviando ? 'Enviando…' : 'Enviar propuesta'}
           </Button>
         </DialogActions>
       </Dialog>

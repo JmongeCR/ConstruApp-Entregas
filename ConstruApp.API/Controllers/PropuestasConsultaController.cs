@@ -1,8 +1,12 @@
 using System.Security.Claims;
+using System.Data;
 using ConstruApp.Core.Entities;
+using ConstruApp.Core.Enums;
 using ConstruApp.Core.Interfaces;
+using ConstruApp.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ConstruApp.API.Controllers;
 
@@ -11,6 +15,47 @@ namespace ConstruApp.API.Controllers;
 [Route("api/propuestas")]
 public sealed class PropuestasConsultaController(IUnitOfWork uow) : ControllerBase
 {
+    [HttpPost]
+    [Authorize(Roles = "Constructor")]
+    public async Task<IActionResult> Crear(CrearPropuestaRequest solicitud, [FromServices] AppDbContext db,
+        CancellationToken ct)
+    {
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId)) return Forbid();
+        var descripcion = solicitud.Descripcion?.Trim();
+        var incluye = solicitud.Incluye?.Trim();
+        if (solicitud.ProyectoId <= 0 || solicitud.MontoTotal is <= 0 or > 9999999999999999.99m ||
+            solicitud.MontoTotal != decimal.Round(solicitud.MontoTotal, 2) || solicitud.PlazoEstimadoDias <= 0 ||
+            string.IsNullOrEmpty(descripcion) || descripcion.Length > 3000 || incluye?.Length > 2000)
+            return BadRequest(new { message = "Ingresá un proyecto válido, un monto positivo con hasta dos decimales, un plazo positivo y una descripción de hasta 3000 caracteres. El detalle de lo incluido admite hasta 2000 caracteres." });
+
+        var perfil = (await uow.PerfilesConstructor.FindAsync(p => p.UsuarioId == usuarioId)).FirstOrDefault();
+        if (perfil is null) return Forbid();
+
+        await using var transaccion = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct)
+            : null;
+        var proyecto = await uow.Proyectos.GetByIdAsync(solicitud.ProyectoId);
+        if (proyecto is null) return NotFound(new { message = "No encontramos el proyecto." });
+        if (proyecto.Estado is not (EstadoProyecto.Publicado or EstadoProyecto.EnPropuestas))
+            return Conflict(new { message = "El proyecto ya no recibe cotizaciones." });
+
+        var propuesta = new Propuesta
+        {
+            ProyectoId = proyecto.Id,
+            ConstructorId = perfil.Id,
+            MontoTotal = solicitud.MontoTotal,
+            PlazoEstimadoDias = solicitud.PlazoEstimadoDias,
+            Descripcion = descripcion,
+            Incluye = string.IsNullOrEmpty(incluye) ? null : incluye,
+            Estado = EstadoPropuesta.Enviada,
+        };
+        await uow.Propuestas.AddAsync(propuesta);
+        await uow.SaveChangesAsync();
+        if (transaccion is not null) await transaccion.CommitAsync(ct);
+
+        return CreatedAtAction(nameof(MisPropuestas), Mapear(propuesta, perfil));
+    }
+
     [HttpGet("proyecto/{proyectoId:int}")]
     [Authorize(Roles = "Cliente,Admin")]
     public async Task<IActionResult> PorProyecto(int proyectoId)
@@ -48,3 +93,6 @@ public sealed class PropuestasConsultaController(IUnitOfWork uow) : ControllerBa
         constructorCalificacion = perfil?.CalificacionPromedio,
     };
 }
+
+public sealed record CrearPropuestaRequest(int ProyectoId, decimal MontoTotal, string? Descripcion,
+    string? Incluye, int PlazoEstimadoDias);
