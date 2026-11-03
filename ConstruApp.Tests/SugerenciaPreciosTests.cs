@@ -155,6 +155,21 @@ public class SugerenciaPreciosTests
         Assert.True(new RangosPreciosOptions().EsValida());
     }
 
+    [Fact]
+    public async Task ConcurrentSavesAllocateDistinctVersionsAcrossContexts()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(async () =>
+        {
+            await using var db = new AppDbContext(options);
+            await new UnitOfWork(db).GuardarCotizacionConVersionAsync(new CotizacionIA { ProyectoId = 1 });
+        })));
+        await using var reader = new AppDbContext(options);
+        Assert.Equal(Enumerable.Range(1, 8), await reader.CotizacionesIA.OrderBy(c => c.Version)
+            .Select(c => c.Version).ToListAsync());
+    }
+
     private static RangoPrecioPorM2 TestRange() => new() { Minimo = 100.10m, Maximo = 200.50m, Fuente = "Datos ficticios de prueba" };
 
     private sealed class Fixture : IDisposable
