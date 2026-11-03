@@ -165,6 +165,7 @@ function ModalCalificar({ open, onClose, propuesta, proyectoId, onCalificado }) 
 export function PropuestasProyecto() {
   const { proyectoId }  = useParams();
   const navigate        = useNavigate();
+  const { usuario }     = useAuth();
   const [propuestas,  setPropuestas]  = useState([]);
   const [proyecto,    setProyecto]    = useState(null);
   const [loading,     setLoading]     = useState(true);
@@ -260,8 +261,8 @@ export function PropuestasProyecto() {
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
                         <Avatar sx={{ bgcolor: ACCENT, fontWeight: 700, width: 38, height: 38, fontSize: 14 }}>C</Avatar>
                         <Box>
-                          <Typography fontWeight={600} fontSize={13.5}>Constructor #{p.constructorId}</Typography>
-                          <Rating value={4.5} precision={0.5} size="small" readOnly />
+                          <Typography fontWeight={600} fontSize={13.5}>{p.constructorNombre || `Constructor #${p.constructorId}`}</Typography>
+                          {p.constructorCalificacion > 0 && <Rating value={p.constructorCalificacion} precision={0.5} size="small" readOnly />}
                         </Box>
                       </Box>
                       <Chip label={est.label} size="small"
@@ -294,13 +295,15 @@ export function PropuestasProyecto() {
                     )}
                   </CardContent>
 
-                  {(p.estado === 'Enviada' || p.estado === 'Vista') && (
+                  {(p.estado === 'Enviada' || p.estado === 'Vista') &&
+                    ['Publicado', 'EnPropuestas'].includes(proyecto?.estado) &&
+                    usuario?.rol === 'Cliente' && Number(usuario.id) === proyecto?.clienteId && (
                     <>
                       <Divider />
                       <Box sx={{ p: 2, display: 'flex', gap: 1 }}>
                         <Button variant="contained" color="success" size="small"
-                          startIcon={<CheckCircleIcon />} onClick={() => handleEstado(p.id, 'Aceptada')}>
-                          Aceptar
+                          startIcon={<CheckCircleIcon />} onClick={() => navigate(`/proyectos/${proyectoId}/comparar-cotizaciones`)}>
+                          Elegir propuesta
                         </Button>
                         <Button variant="outlined" color="error" size="small"
                           startIcon={<CancelIcon />} onClick={() => handleEstado(p.id, 'Rechazada')}>
