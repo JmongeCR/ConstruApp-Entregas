@@ -1,12 +1,14 @@
 using ConstruApp.Core.Entities;
 using ConstruApp.Core.Interfaces;
 using ConstruApp.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace ConstruApp.Infrastructure.Repositories;
 
 public class UnitOfWork : IUnitOfWork
 {
     private readonly AppDbContext _context;
+    private static readonly SemaphoreSlim VersionesEnMemoria = new(1);
 
     public IRepository<Proyecto>          Proyectos           { get; }
     public IRepository<Propiedad>         Propiedades         { get; }
@@ -80,6 +82,38 @@ public class UnitOfWork : IUnitOfWork
         Notificaciones        = new Repository<Notificacion>(context);
         EmailLogs             = new Repository<EmailLog>(context);
         FavoritosProveedor    = new Repository<FavoritoProveedor>(context);
+    }
+
+    public async Task GuardarCotizacionConVersionAsync(CotizacionIA cotizacion)
+    {
+        if (_context.Database.IsSqlServer())
+        {
+            await using var transaccion = await _context.Database.BeginTransactionAsync();
+            var recurso = $"ConstruApp:CotizacionIA:{cotizacion.ProyectoId}";
+            await _context.Database.ExecuteSqlInterpolatedAsync($"""
+                DECLARE @resultado int;
+                EXEC @resultado = sys.sp_getapplock @Resource = {recurso},
+                    @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 10000;
+                IF @resultado < 0 THROW 50001, 'No fue posible reservar la versión de la estimación.', 1;
+                """);
+            await InsertarCotizacionVersionada(cotizacion);
+            await transaccion.CommitAsync();
+            return;
+        }
+
+        await VersionesEnMemoria.WaitAsync();
+        try { await InsertarCotizacionVersionada(cotizacion); }
+        finally { VersionesEnMemoria.Release(); }
+    }
+
+    private async Task InsertarCotizacionVersionada(CotizacionIA cotizacion)
+    {
+        var ultimaVersion = await _context.CotizacionesIA
+            .Where(c => c.ProyectoId == cotizacion.ProyectoId)
+            .MaxAsync(c => (int?)c.Version) ?? 0;
+        cotizacion.Version = checked(ultimaVersion + 1);
+        await CotizacionesIA.AddAsync(cotizacion);
+        await SaveChangesAsync();
     }
 
     public async Task<int> SaveChangesAsync() => await _context.SaveChangesAsync();
