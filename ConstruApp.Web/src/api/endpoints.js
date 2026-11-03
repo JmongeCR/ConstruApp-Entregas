@@ -130,6 +130,7 @@ export const facturasApi = {
 
 // ── Avances de obra ───────────────────────────────────────────────────────────
 export const avancesApi = {
+  getProyectos: ()      => api.get('/avances/proyectos'),
   getByProyecto: (pid)  => api.get(`/avances/proyecto/${pid}`),
   create:        (data) => api.post('/avances', data),
   delete:        (id)   => api.delete(`/avances/${id}`),
