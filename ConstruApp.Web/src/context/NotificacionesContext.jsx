@@ -16,15 +16,17 @@ export function NotificacionesProvider({ children }) {
   // ── Carga completa desde BD ────────────────────────────────────────────────
   const cargarNotificaciones = useCallback(async () => {
     if (!usuario) return;
+    const tokenSolicitud = localStorage.getItem('token');
     setCargando(true);
     try {
       const { data } = await notificacionesApi.getMias(1, 40);
+      if (localStorage.getItem('token') !== tokenSolicitud) return;
       setNotificaciones(data);
       setNoLeidas(data.filter(n => !n.leida).length);
     } catch {
       // silencioso — no interrumpir UX
     } finally {
-      setCargando(false);
+      if (localStorage.getItem('token') === tokenSolicitud) setCargando(false);
     }
   }, [usuario]);
 
@@ -51,6 +53,8 @@ export function NotificacionesProvider({ children }) {
       return;
     }
     cargarNotificaciones();
+    const intervalo = window.setInterval(cargarNotificaciones, 30_000);
+    return () => window.clearInterval(intervalo);
   }, [usuario?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Acciones ───────────────────────────────────────────────────────────────
