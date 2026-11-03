@@ -170,6 +170,14 @@ public class ProyectosController : ControllerBase
         if (propiedad is null)
             return BadRequest(new { message = "La propiedad seleccionada no existe o no pertenece al cliente." });
 
+        if (proyecto.Estado != EstadoProyecto.Borrador && proyecto.TipoProyecto != tipo)
+        {
+            var errores = new Dictionary<string, string>();
+            await ValidarDocumentos(id, tipo, errores);
+            if (errores.Count > 0)
+                return BadRequest(new { message = "Completá los documentos del nuevo tipo de proyecto.", errors = errores });
+        }
+
         proyecto.Titulo        = req.Titulo.Trim();
         proyecto.Descripcion   = req.Descripcion.Trim();
         proyecto.TipoProyecto  = tipo;
@@ -306,15 +314,7 @@ public class ProyectosController : ControllerBase
         if (proyecto.FechaInicio.HasValue && proyecto.FechaFin.HasValue && proyecto.FechaFin < proyecto.FechaInicio)
             errores["fechaFin"] = "La fecha de finalización no puede ser anterior a la fecha de inicio.";
 
-        var requeridos = _requisitos.Requeridos(proyecto.TipoProyecto);
-        if (requeridos.Length > 0)
-        {
-            var archivos = await _uow.Archivos.FindAsync(a => a.ProyectoId == id);
-            var presentes = archivos.Where(a => !string.IsNullOrWhiteSpace(a.Url))
-                .Select(CotizacionRequisitosOptions.CategoriaDe).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            foreach (var requerido in requeridos.Where(r => !presentes.Contains(r)))
-                errores[$"documentos.{requerido}"] = $"Adjuntá el documento obligatorio: {requerido}.";
-        }
+        await ValidarDocumentos(id, proyecto.TipoProyecto, errores);
 
         if (errores.Count > 0)
             return BadRequest(new { message = "Completá o corregí la información antes de enviar el proyecto.", errors = errores });
@@ -379,6 +379,17 @@ public class ProyectosController : ControllerBase
         return propiedad?.ClienteId == clienteId ? propiedad : null;
     }
 
+    private async Task ValidarDocumentos(int id, TipoProyecto? tipo, Dictionary<string, string> errores)
+    {
+        var requeridos = _requisitos.Requeridos(tipo);
+        if (requeridos.Length == 0) return;
+        var archivos = await _uow.Archivos.FindAsync(a => a.ProyectoId == id);
+        var presentes = archivos.Where(a => !string.IsNullOrWhiteSpace(a.Url))
+            .Select(CotizacionRequisitosOptions.CategoriaDe).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var requerido in requeridos.Where(r => !presentes.Contains(r)))
+            errores[$"documentos.{requerido}"] = $"Adjuntá el documento obligatorio: {requerido}.";
+    }
+
     private BadRequestObjectResult? ValidarInformacionGeneral(
         ProyectoRequest req,
         out TipoProyecto tipo)
@@ -396,6 +407,8 @@ public class ProyectosController : ControllerBase
 
         if (string.IsNullOrWhiteSpace(req.Descripcion) || req.Descripcion.Trim().Length < 20)
             errores["descripcion"] = "La descripción debe tener al menos 20 caracteres.";
+        else if (req.Descripcion.Trim().Length > 3000)
+            errores["descripcion"] = "La descripción admite hasta 3000 caracteres.";
 
         if (!req.PropiedadId.HasValue)
             errores["propiedadId"] = "Seleccioná la propiedad donde se realizará el proyecto.";
