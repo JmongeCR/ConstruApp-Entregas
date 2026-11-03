@@ -95,7 +95,7 @@ export default function Marketplace() {
 
     const cargarProyectos = proyectosApi.getMios()
       .then(r => {
-        const activos = (r.data ?? []).filter(p => p.estado === 'Publicado');
+        const activos = (r.data ?? []).filter(p => ['Publicado', 'EnPropuestas'].includes(p.estado));
         setMisProyectos(activos);
         if (activos.length > 0) setProyectoActivo(activos[0]);
       })
