@@ -1,4 +1,5 @@
 using System.Text;
+using System.Security.Claims;
 using System.Threading.RateLimiting;
 using ConstruApp.API.Services;
 using ConstruApp.Core.Entities;
@@ -83,12 +84,16 @@ builder.Services.AddRateLimiter(options =>
         cfg.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         cfg.QueueLimit        = 0;
     });
+    options.AddPolicy("entrevista-ia", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonimo",
+        _ => new FixedWindowRateLimiterOptions { Window = TimeSpan.FromMinutes(1), PermitLimit = 6 }));
 });
 
 // ── Servicios ──────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IPermisosService,  PermisosService>();
 builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
 builder.Services.AddHttpClient();
+builder.Services.AddHttpClient<ValidacionProyectoIa>(client => client.Timeout = TimeSpan.FromSeconds(20));
 builder.Services.AddOptions<RangosPreciosOptions>()
     .Bind(builder.Configuration.GetSection(RangosPreciosOptions.SectionName))
     .Validate(options => options.EsValida(), "Los rangos de precios contienen tipos, límites o fuentes inválidos.")
@@ -202,7 +207,6 @@ app.MapGet("/api/health", async (AppDbContext db) =>
 });
 
 app.UseCors("AppPolicy");
-app.UseRateLimiter();
 // Crear y configurar la misma raíz usada por los adjuntos, incluso en una instalación nueva.
 var raizWeb = app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
 Directory.CreateDirectory(raizWeb);
@@ -214,6 +218,7 @@ app.UseStaticFiles();
 if (app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 app.MapFallbackToFile("index.html");

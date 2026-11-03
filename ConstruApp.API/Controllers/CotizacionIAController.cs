@@ -1,12 +1,17 @@
 using System.Security.Claims;
 using System.Text.Json;
+using ConstruApp.API.Services;
 using ConstruApp.Core.Entities;
+using ConstruApp.Core.Enums;
 using ConstruApp.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace ConstruApp.API.Controllers;
+
+public sealed record EntrevistaProyectoRequest(IReadOnlyList<TurnoProyectoIa>? Turnos);
 
 [ApiController]
 [Route("api/cotizacion-ia")]
@@ -16,6 +21,48 @@ public sealed class CotizacionIAController : ControllerBase
     private readonly IUnitOfWork _uow;
 
     public CotizacionIAController(IUnitOfWork uow) => _uow = uow;
+
+    [HttpPost("entrevista")]
+    [Authorize(Roles = "Cliente")]
+    [EnableRateLimiting("entrevista-ia")]
+    [RequestSizeLimit(48_000)]
+    public async Task<IActionResult> Entrevistar([FromBody] EntrevistaProyectoRequest solicitud,
+        [FromServices] ValidacionProyectoIa ia, CancellationToken cancellationToken)
+    {
+        var turnos = solicitud.Turnos;
+        if (turnos is null || turnos.Count is < 1 or > 19 || turnos.Count % 2 == 0 ||
+            turnos.Where((turno, i) => turno is null ||
+                turno.Rol != (i % 2 == 0 ? "cliente" : "asistente") ||
+                string.IsNullOrWhiteSpace(turno.Texto) || turno.Texto.Length > 1500).Any())
+            return BadRequest(new { message = "Revisá el historial y el texto de tu mensaje." });
+
+        var revision = await ia.RevisarAsync(turnos, cancellationToken);
+        if (revision is null)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                new { message = "La IA no está disponible en este momento. Podés volver a intentar el mismo mensaje." });
+
+        var titulo = revision.Titulo?.Trim();
+        var descripcion = revision.Descripcion?.Trim();
+        var tipo = revision.TipoProyecto?.Trim();
+        var faltantes = new Dictionary<string, string>();
+        if (string.IsNullOrEmpty(titulo))
+            faltantes["titulo"] = "¿Cómo querés llamar al proyecto?";
+        if (!Enum.GetNames<TipoProyecto>().Contains(tipo))
+            faltantes["tipoProyecto"] = "¿Qué tipo de trabajo querés realizar?";
+        if (descripcion is null || descripcion.Length < 20)
+            faltantes["descripcion"] = "¿Qué trabajos necesitás y en qué parte del inmueble?";
+
+        var pregunta = faltantes.Values.FirstOrDefault() ?? revision.Pregunta?.Trim();
+        var completo = string.IsNullOrWhiteSpace(pregunta) && !string.IsNullOrWhiteSpace(revision.Recomendaciones);
+        return Ok(new
+        {
+            ficha = new { titulo, tipoProyecto = faltantes.ContainsKey("tipoProyecto") ? null : tipo, descripcion },
+            faltantes,
+            completo,
+            mensaje = completo ? revision.Recomendaciones : string.IsNullOrWhiteSpace(pregunta)
+                ? "¿Qué condiciones o límites del trabajo querés aclarar antes de cotizar?" : pregunta,
+        });
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
