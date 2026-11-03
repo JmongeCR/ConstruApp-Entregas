@@ -7,6 +7,7 @@ using ConstruApp.Core.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using Microsoft.Extensions.Options;
 
 namespace ConstruApp.Tests.Unit;
 
@@ -155,6 +156,75 @@ public class ProyectosControllerTests
         dependencies.UnitOfWork.Verify(unit => unit.SaveChangesAsync(), Times.Never);
     }
 
+    [Fact]
+    public async Task EnviarACotizacion_WithCompleteOwnedDraft_SetsStatusAndSubmissionDate()
+    {
+        var dependencies = CreateController();
+        var project = CompleteDraft();
+        dependencies.Proyectos.Setup(repository => repository.GetByIdAsync(project.Id)).ReturnsAsync(project);
+        dependencies.Propiedades.Setup(repository => repository.GetByIdAsync(4)).ReturnsAsync(OwnedProperty());
+        dependencies.UnitOfWork.Setup(unit => unit.SaveChangesAsync()).ReturnsAsync(1);
+
+        var result = await dependencies.Controller.EnviarACotizacion(project.Id);
+
+        Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(EstadoProyecto.EnPropuestas, project.Estado);
+        Assert.NotNull(project.FechaEnvioCotizacion);
+        Assert.Equal(project.FechaEnvioCotizacion.Value, project.FechaPublicacion);
+        dependencies.Proyectos.Verify(repository => repository.UpdateAsync(project), Times.Once);
+        dependencies.UnitOfWork.Verify(unit => unit.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task EnviarACotizacion_WithIncompleteDraft_ReturnsFieldErrorsWithoutSaving()
+    {
+        var dependencies = CreateController();
+        var project = CompleteDraft();
+        project.Descripcion = "Corta";
+        project.PropiedadId = null;
+        dependencies.Proyectos.Setup(repository => repository.GetByIdAsync(project.Id)).ReturnsAsync(project);
+
+        var result = await dependencies.Controller.EnviarACotizacion(project.Id);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var errors = Assert.IsType<Dictionary<string, string>>(
+            badRequest.Value!.GetType().GetProperty("errors")!.GetValue(badRequest.Value));
+        Assert.Contains("descripcion", errors.Keys);
+        Assert.Contains("propiedadId", errors.Keys);
+        Assert.Equal(EstadoProyecto.Borrador, project.Estado);
+        dependencies.Proyectos.Verify(repository => repository.UpdateAsync(It.IsAny<Proyecto>()), Times.Never);
+        dependencies.UnitOfWork.Verify(unit => unit.SaveChangesAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task EnviarACotizacion_WithAnotherClientsProject_ReturnsForbid()
+    {
+        var dependencies = CreateController();
+        var project = CompleteDraft();
+        project.ClienteId = 99;
+        dependencies.Proyectos.Setup(repository => repository.GetByIdAsync(project.Id)).ReturnsAsync(project);
+
+        var result = await dependencies.Controller.EnviarACotizacion(project.Id);
+
+        Assert.IsType<ForbidResult>(result);
+        dependencies.Proyectos.Verify(repository => repository.UpdateAsync(It.IsAny<Proyecto>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task EnviarACotizacion_WhenNotDraft_RejectsResubmission()
+    {
+        var dependencies = CreateController();
+        var project = CompleteDraft();
+        project.Estado = EstadoProyecto.EnPropuestas;
+        dependencies.Proyectos.Setup(repository => repository.GetByIdAsync(project.Id)).ReturnsAsync(project);
+
+        var result = await dependencies.Controller.EnviarACotizacion(project.Id);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        dependencies.Propiedades.Verify(repository => repository.GetByIdAsync(It.IsAny<int>()), Times.Never);
+        dependencies.UnitOfWork.Verify(unit => unit.SaveChangesAsync(), Times.Never);
+    }
+
     private static ProyectoRequest ValidRequest() => new(
         "  Remodelación de cocina  ",
         "  Renovar muebles, iluminación y acabados de la cocina.  ",
@@ -167,6 +237,19 @@ public class ProyectosControllerTests
         null,
         null,
         4);
+
+    private static Proyecto CompleteDraft() => new()
+    {
+        Id = 21,
+        ClienteId = 7,
+        PropiedadId = 4,
+        Titulo = "Remodelación de cocina",
+        Descripcion = "Renovar muebles, iluminación y acabados de la cocina.",
+        TipoProyecto = TipoProyecto.Remodelacion,
+        Estado = EstadoProyecto.Borrador,
+        AreaM2 = 25,
+        PresupuestoMax = 8_000_000,
+    };
 
     private static Propiedad OwnedProperty() => new()
     {
@@ -194,7 +277,8 @@ public class ProyectosControllerTests
             new Claim("nombre", "Cliente Prueba"),
         ], "Test");
         var httpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
-        var controller = new ProyectosController(unitOfWork.Object, auditoria.Object)
+        var controller = new ProyectosController(unitOfWork.Object, auditoria.Object,
+            Options.Create(new CotizacionRequisitosOptions()))
         {
             ControllerContext = new ControllerContext { HttpContext = httpContext },
         };
