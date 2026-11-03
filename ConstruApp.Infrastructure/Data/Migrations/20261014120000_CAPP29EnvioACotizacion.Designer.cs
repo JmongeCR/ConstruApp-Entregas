@@ -10,7 +10,6 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace ConstruApp.Infrastructure.Data.Migrations
 {
-    
     partial class CAPP29EnvioACotizacion
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
