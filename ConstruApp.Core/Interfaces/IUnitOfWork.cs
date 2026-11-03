@@ -39,5 +39,6 @@ public interface IUnitOfWork : IDisposable
     IRepository<EmailLog>                 EmailLogs             { get; }
 
     IRepository<FavoritoProveedor>          FavoritosProveedor     { get; }
+    Task GuardarCotizacionConVersionAsync(CotizacionIA cotizacion);
     Task<int> SaveChangesAsync();
 }
