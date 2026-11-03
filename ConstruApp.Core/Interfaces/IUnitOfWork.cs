@@ -8,7 +8,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<Propiedad>         Propiedades        { get; }
     IRepository<FotoPropiedad>     FotosPropiedad     { get; }
     IRepository<ArchivoProyecto>   Archivos           { get; }
-    IRepository<CotizacionIA>      CotizacionesIA     { get; }
+    ICotizacionIARepository        CotizacionesIA     { get; }
     IRepository<LineaCotizacionIA> LineasCotizacion   { get; }
     IRepository<Material>          Materiales         { get; }
     IRepository<PrecioMaterial>    PreciosMaterial    { get; }
