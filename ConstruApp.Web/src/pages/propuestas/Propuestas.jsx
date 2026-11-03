@@ -192,7 +192,7 @@ export function PropuestasProyecto() {
       await propuestasApi.cambiarEstado(id, estado);
       await cargar();
       notify(estado === 'Aceptada' ? '¡Propuesta aceptada! El proyecto está en curso.' : 'Propuesta rechazada.');
-    } catch { notify('Error al actualizar.', 'error'); }
+    } catch (e) { notify(e.response?.data?.message ?? 'Error al actualizar.', 'error'); }
   };
 
   if (loading) return <LinearProgress />;
