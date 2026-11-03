@@ -78,7 +78,6 @@ public sealed class SugerenciaPreciosController : ControllerBase
             ? "Proyecto especial: el rango es orientativo y debe validarlo una persona profesional."
             : "Rango orientativo, no constituye una cotización ni un precio garantizado.";
         var fuente = string.IsNullOrWhiteSpace(rango.Fuente) ? "Rangos de referencia configurados" : rango.Fuente.Trim();
-        var anteriores = await _uow.CotizacionesIA.FindAsync(c => c.ProyectoId == proyecto.Id);
         var registro = new CotizacionIA
         {
             ProyectoId = proyecto.Id,
@@ -89,11 +88,9 @@ public sealed class SugerenciaPreciosController : ControllerBase
             Plan = "referencial",
             NombrePlan = "Rango estimado",
             GeneradoPorId = userId,
-            Estado = "Activa",
-            Version = anteriores.Select(c => c.Version).DefaultIfEmpty(0).Max() + 1
+            Estado = "Activa"
         };
-        await _uow.CotizacionesIA.AddAsync(registro);
-        await _uow.SaveChangesAsync();
+        await _uow.GuardarCotizacionConVersionAsync(registro);
         await _auditoria.RegistrarAsync(userId, User.FindFirstValue("nombre") ?? "",
             "SugerirPrecios", "Proyectos", proyectoId.ToString(), registro.ResumenIA);
 
