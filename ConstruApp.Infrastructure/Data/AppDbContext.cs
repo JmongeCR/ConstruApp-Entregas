@@ -83,7 +83,7 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
             e.Property(p => p.Titulo).HasMaxLength(200).IsRequired();
             e.Property(p => p.Descripcion).HasMaxLength(3000);
             e.Property(p => p.TipoProyecto).HasConversion<string>().HasMaxLength(30);
-            e.Property(p => p.Estado).HasConversion<string>().HasMaxLength(30);
+            e.Property(p => p.Estado).HasConversion<string>().HasMaxLength(30).IsConcurrencyToken();
             e.Property(p => p.Canton).HasMaxLength(100);
             e.Property(p => p.Provincia).HasMaxLength(100);
             e.Property(p => p.Distrito).HasMaxLength(100);
@@ -290,7 +290,7 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
             e.Property(p => p.MontoTotal).HasColumnType("decimal(18,2)");
             e.Property(p => p.Descripcion).HasMaxLength(3000);
             e.Property(p => p.Incluye).HasMaxLength(2000);
-            e.Property(p => p.Estado).HasConversion<string>().HasMaxLength(20);
+            e.Property(p => p.Estado).HasConversion<string>().HasMaxLength(20).IsConcurrencyToken();
             e.Property(p => p.ArchivoUrl).HasMaxLength(500);
 
             e.HasOne(p => p.Proyecto)

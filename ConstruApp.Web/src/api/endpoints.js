@@ -72,6 +72,7 @@ export const cotizacionIAApi = {
 // ── Propuestas ────────────────────────────────────────────────────────────────
 export const propuestasApi = {
   comparar: (pid, params)    => api.get(`/proyectos/${pid}/comparar-cotizaciones`, { params }),
+  seleccionar: (pid, propuestaId) => api.post(`/proyectos/${pid}/seleccionar-propuesta`, { propuestaId }),
   getByProyecto: (pid)        => api.get(`/propuestas/proyecto/${pid}`),
   getMias:       ()           => api.get('/propuestas/mis-propuestas'),
   getById:       (id)         => api.get(`/propuestas/${id}`),
