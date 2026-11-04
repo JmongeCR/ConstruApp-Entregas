@@ -18,6 +18,26 @@ namespace ConstruApp.Tests.Unit;
 public class CotizacionBorradoresTests
 {
     [Fact]
+    public async Task BorradorSinAreaPuedeGuardarsePeroNoEnviarsePorNingunaRuta()
+    {
+        using var fixture = new Fixture();
+        var creado = Assert.IsType<CreatedAtActionResult>(await fixture.Controller.CrearBorrador(
+            new("Cocina", "Retirar cerámica e instalar porcelanato en la cocina.", "Pisos", 4)));
+        var id = Json(creado).GetProperty("Id").GetInt32();
+
+        var enviar = Assert.IsType<BadRequestObjectResult>(await fixture.Controller.EnviarACotizacion(id));
+        var publicar = Assert.IsType<BadRequestObjectResult>(await fixture.Controller.Publicar(id));
+        Assert.True(Json(enviar).GetProperty("errors").TryGetProperty("areaM2", out _));
+        Assert.True(Json(publicar).GetProperty("errors").TryGetProperty("areaM2", out _));
+
+        fixture.Db.ChangeTracker.Clear();
+        var borrador = (await fixture.Db.Proyectos.FindAsync(id))!;
+        Assert.Equal(EstadoProyecto.Borrador, borrador.Estado);
+        Assert.Null(borrador.FechaEnvioCotizacion);
+        Assert.Empty(Json(Assert.IsType<OkObjectResult>(await fixture.Controller.GetPublicados(null, null))).EnumerateArray());
+    }
+
+    [Fact]
     public async Task Draft_CanBeSavedIncompleteResumedAndSubmitted_WithPersistedDateAndAudit()
     {
         using var fixture = new Fixture();
@@ -216,7 +236,7 @@ public class CotizacionBorradoresTests
         public async Task<Proyecto> CreateCompleteDraft()
         {
             var proyecto = new Proyecto { ClienteId = 7, PropiedadId = 4, Titulo = "Cocina",
-                Descripcion = "Renovación completa de los muebles de la cocina.", TipoProyecto = TipoProyecto.Remodelacion };
+                Descripcion = "Renovación completa de los muebles de la cocina.", TipoProyecto = TipoProyecto.Remodelacion, AreaM2 = 25 };
             Db.Proyectos.Add(proyecto);
             await Db.SaveChangesAsync();
             return proyecto;

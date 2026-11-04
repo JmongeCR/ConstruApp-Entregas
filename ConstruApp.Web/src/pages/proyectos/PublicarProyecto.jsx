@@ -241,16 +241,22 @@ export default function PublicarProyecto() {
     tipoProyecto: touched.tipoProyecto && !form.tipoProyecto                   ? 'Seleccioná un tipo.'        : '',
     descripcion:  touched.descripcion  && form.descripcion.trim().length < 20  ? 'Mínimo 20 caracteres.'      : '',
     propiedadId:  touched.propiedadId  && !form.propiedadId                    ? 'Seleccioná una propiedad.'  : '',
-    areaM2:       touched.areaM2 && form.areaM2 !== '' && (!Number.isFinite(Number(form.areaM2)) || Number(form.areaM2) <= 0) ? 'El área debe ser mayor que cero.' : '',
+    areaM2:       touched.enviar && !form.areaM2.trim() ? 'Indicá el área para enviar a cotización.'
+      : touched.areaM2 && form.areaM2 !== '' && (!Number.isFinite(Number(form.areaM2)) || Number(form.areaM2) <= 0) ? 'El área debe ser mayor que cero.' : '',
     presupuestoMax: touched.presupuestoMax && form.presupuestoMax !== '' && (!Number.isFinite(Number(form.presupuestoMax)) || Number(form.presupuestoMax) <= 0) ? 'El presupuesto debe ser mayor que cero.' : '',
   };
 
   /* Crea o actualiza la información general del proyecto. */
   const handleGuardarInformacion = async (modo = 'completo') => {
     const parcial = modo !== 'completo';
-    setTouched({ titulo: !parcial, tipoProyecto: !parcial, descripcion: !parcial, propiedadId: !parcial, areaM2: true, presupuestoMax: true });
+    setTouched({ titulo: !parcial, tipoProyecto: !parcial, descripcion: !parcial, propiedadId: !parcial, areaM2: true, presupuestoMax: true, enviar: modo === 'enviar' });
     const areaInvalida = form.areaM2.trim() !== '' && (!Number.isFinite(Number(form.areaM2)) || Number(form.areaM2) <= 0);
     const presupuestoInvalido = form.presupuestoMax.trim() !== '' && (!Number.isFinite(Number(form.presupuestoMax)) || Number(form.presupuestoMax) <= 0);
+    if (modo === 'enviar' && !form.areaM2.trim()) {
+      setError('');
+      scrollTo(detallesRef);
+      return;
+    }
     if ((!parcial && (!form.tipoProyecto || !form.titulo.trim() || form.descripcion.trim().length < 20 || !form.propiedadId)) || areaInvalida || presupuestoInvalido) {
       scrollTo(!form.propiedadId && proyectoDone ? ubicRef : proyectoRef);
       return;
@@ -584,7 +590,7 @@ export default function PublicarProyecto() {
                 <TextField fullWidth label="Área aproximada"
                   value={form.areaM2} onChange={set('areaM2')} type="number"
                   error={!!err.areaM2} onBlur={touch('areaM2')}
-                  helperText={err.areaM2 || 'Metros cuadrados del área de trabajo'}
+                  helperText={err.areaM2 || 'Área de trabajo en m², requerida para enviar a cotización'}
                   slotProps={{ htmlInput: { min: 0.01, step: 'any' }, input: { endAdornment: <InputAdornment position="end">m²</InputAdornment> } }}
                   />
               </Grid>
