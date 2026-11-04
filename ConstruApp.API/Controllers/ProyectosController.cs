@@ -325,8 +325,8 @@ public class ProyectosController : ControllerBase
             if (propiedad is null || propiedad.ClienteId != userId)
                 errores["propiedadId"] = "La propiedad del proyecto ya no está disponible.";
         }
-        if (proyecto.AreaM2.HasValue && proyecto.AreaM2.Value <= 0)
-            errores["areaM2"] = "El área debe ser mayor que cero.";
+        if (proyecto.AreaM2 is null or <= 0 or > 99999999.99m)
+            errores["areaM2"] = "Indicá un área mayor que cero y menor que 100000000 m² para enviar a cotización.";
         if (proyecto.PresupuestoMax.HasValue && proyecto.PresupuestoMax.Value <= 0)
             errores["presupuestoMax"] = "El presupuesto debe ser mayor que cero.";
         if (proyecto.FechaInicio.HasValue && proyecto.FechaFin.HasValue && proyecto.FechaFin < proyecto.FechaInicio)
