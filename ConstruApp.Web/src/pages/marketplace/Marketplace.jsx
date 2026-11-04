@@ -4,7 +4,7 @@ import {
   Box, Typography, TextField, InputAdornment, Select, MenuItem,
   FormControl, InputLabel, Button, Chip, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow,
-  Skeleton, Alert, useTheme, useMediaQuery,
+  Skeleton, Alert, Dialog, DialogTitle, DialogContent, DialogActions, useTheme, useMediaQuery,
 } from '@mui/material';
 import SearchIcon        from '@mui/icons-material/Search';
 import VerifiedIcon      from '@mui/icons-material/Verified';
@@ -21,6 +21,8 @@ const TIPO_LABEL = {
   ElectricoPlomeria:'Eléctrico / Plomería', Pintura:'Pintura',
   Pisos:'Pisos', Techos:'Techos', PiscinaJardin:'Piscina / Jardín', Otro:'Otro',
 };
+const moneda = new Intl.NumberFormat('es-CR', { style: 'currency', currency: 'CRC' });
+const fecha = new Intl.DateTimeFormat('es-CR', { timeZone: 'America/Costa_Rica' });
 
 const TIPOS_PROYECTO = [
   { value: '', label: 'Todos los tipos' },
@@ -75,6 +77,7 @@ export default function Marketplace() {
   const [buscarProy,    setBuscarProy]    = useState('');
   const [tipoProy,      setTipoProy]      = useState('');
   const [provinciaProy, setProvinciaProy] = useState('Todas');
+  const [detalleProy, setDetalleProy] = useState(null);
 
   /* ── Carga de datos ──────────────────────────────────────────────────── */
   useEffect(() => {
@@ -206,7 +209,7 @@ export default function Marketplace() {
                   </TableCell>
                 </TableRow>
               ) : filtradosProy.map(p => (
-                <TableRow key={p.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/obra/${p.id}`)}>
+                <TableRow key={p.id} hover sx={{ cursor: 'pointer' }} onClick={() => setDetalleProy(p)}>
                   <TableCell sx={{ py: 1.5, pl: 2 }}>
                     <Typography fontSize={13.5} fontWeight={600}>{p.titulo}</Typography>
                     {p.descripcion && (
@@ -222,11 +225,11 @@ export default function Marketplace() {
                     {TIPO_LABEL[p.tipoProyecto] || p.tipoProyecto || '—'}
                   </TableCell>
                   <TableCell sx={{ fontSize: 13, display: { xs: 'none', sm: 'table-cell' } }}>
-                    {p.presupuesto ? `₡${Number(p.presupuesto).toLocaleString('es-CR')}` : '—'}
+                    {p.presupuestoMax != null ? moneda.format(p.presupuestoMax) : 'Sin indicar'}
                   </TableCell>
                   <TableCell align="right" sx={{ pr: 2 }}>
                     <Button size="small" variant="outlined"
-                      onClick={e => { e.stopPropagation(); navigate(`/obra/${p.id}`); }}
+                      onClick={e => { e.stopPropagation(); setDetalleProy(p); }}
                       sx={{ fontSize: 12, py: 0.3, px: 1.5 }}>
                       Ver proyecto
                     </Button>
@@ -236,6 +239,30 @@ export default function Marketplace() {
             </TableBody>
           </Table>
         </TableContainer>
+        {detalleProy && (
+          <Dialog open onClose={() => setDetalleProy(null)} fullWidth maxWidth="sm">
+            <DialogTitle>{detalleProy.titulo}</DialogTitle>
+            <DialogContent dividers>
+              <Box component="dl" sx={{ m: 0, display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: 2, rowGap: 1,
+                '& dt': { fontWeight: 600 }, '& dd': { m: 0 } }}>
+                <dt>Tipo de trabajo</dt><dd>{TIPO_LABEL[detalleProy.tipoProyecto] || 'Sin indicar'}</dd>
+                <dt>Ubicación</dt><dd>{[detalleProy.distrito, detalleProy.canton, detalleProy.provincia].filter(Boolean).join(', ') || 'Sin indicar'}</dd>
+                <dt>Área</dt><dd>{detalleProy.areaM2 != null ? `${detalleProy.areaM2.toLocaleString('es-CR')} m²` : 'Sin indicar'}</dd>
+                <dt>Presupuesto máximo</dt><dd>{detalleProy.presupuestoMax != null ? moneda.format(detalleProy.presupuestoMax) : 'Sin indicar'}</dd>
+                <dt>Publicado</dt><dd>{detalleProy.fechaEnvioCotizacion || detalleProy.fechaPublicacion
+                  ? fecha.format(new Date(detalleProy.fechaEnvioCotizacion || detalleProy.fechaPublicacion)) : 'Sin indicar'}</dd>
+              </Box>
+              <Typography variant="subtitle2" sx={{ mt: 2 }}>Descripción del trabajo</Typography>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                {detalleProy.descripcion || 'Sin descripción'}
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDetalleProy(null)}>Cerrar</Button>
+              <Button component={Link} to={`/propuestas?proyectoId=${detalleProy.id}`} variant="contained">Enviar propuesta</Button>
+            </DialogActions>
+          </Dialog>
+        )}
       </Box>
     );
   }
