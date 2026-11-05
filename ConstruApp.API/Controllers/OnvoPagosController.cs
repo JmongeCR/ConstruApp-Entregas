@@ -45,32 +45,45 @@ public sealed class OnvoPagosController(
         if (string.IsNullOrWhiteSpace(secretKey) || string.IsNullOrWhiteSpace(publicKey))
             return StatusCode(503, new { message = "El constructor no ha configurado su pasarela de pagos. Contactá al constructor para coordinar el pago." });
 
-        // Crear Payment Intent en ONVO
+        // Crear Payment Link en ONVO
         using var http = httpFactory.CreateClient();
         http.Timeout = TimeSpan.FromSeconds(20);
-        using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.onvopay.com/v1/payment-intents");
+        using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.onvopay.com/v1/payment-links");
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", secretKey);
         req.Content = JsonContent.Create(new
         {
-            currency    = "CRC",
-            amount      = (long)Math.Round(saldo),
-            description = $"Factura {factura.Numero} — {factura.Concepto ?? factura.Numero}",
+            lineItems = new[]
+            {
+                new {
+                    priceData = new {
+                        type       = "one_time",
+                        currency   = "CRC",
+                        unitAmount = (long)Math.Round(saldo * 100),
+                        productData = new {
+                            name        = $"Factura {factura.Numero}",
+                            description = factura.Concepto ?? factura.Numero,
+                        },
+                    },
+                    quantity = 1,
+                }
+            },
         });
 
         try
         {
             using var res = await http.SendAsync(req, ct);
+            var rawBody = await res.Content.ReadAsStringAsync(ct);
             if (!res.IsSuccessStatusCode)
             {
-                var body = await res.Content.ReadAsStringAsync(ct);
-                logger.LogWarning("ONVO error {Status}: {Body}", (int)res.StatusCode, body);
+                logger.LogWarning("ONVO error {Status}: {Body}", (int)res.StatusCode, rawBody);
                 return StatusCode(502, new { message = "Error al conectar con la pasarela de pagos. Intentá de nuevo." });
             }
 
-            var intent = await res.Content.ReadFromJsonAsync<OnvoIntentResponse>(ct);
-            if (intent?.Id is null) return StatusCode(502, new { message = "Respuesta inválida de la pasarela." });
+            logger.LogInformation("ONVO payment-link response: {Body}", rawBody);
+            var link = System.Text.Json.JsonSerializer.Deserialize<OnvoLinkResponse>(rawBody, System.Text.Json.JsonSerializerOptions.Web);
+            if (link?.Url is null) return StatusCode(502, new { message = "Respuesta inválida de la pasarela." });
 
-            return Ok(new { paymentIntentId = intent.Id, publicKey });
+            return Ok(new { url = link.Url, linkId = link.Id });
         }
         catch (Exception ex)
         {
@@ -94,7 +107,7 @@ public sealed class OnvoPagosController(
             FacturaId  = facturaId,
             Monto      = factura.Saldo,
             MetodoPago = MetodoPago.Tarjeta,
-            Referencia = body.PaymentIntentId,
+            Referencia = body.PaymentLinkId,
             Notas      = "Pago en línea vía ONVO Pay",
             Fecha      = DateTime.UtcNow,
         };
@@ -110,35 +123,11 @@ public sealed class OnvoPagosController(
 
         await auditoria.RegistrarAsync(UserId, User.FindFirstValue("nombre") ?? "",
             "PagoOnline", "Facturas", facturaId.ToString(),
-            $"Pago ONVO {body.PaymentIntentId} — ₡{pago.Monto:N0}");
+            $"Pago ONVO link {body.PaymentLinkId} — ₡{pago.Monto:N0}");
 
         return Ok(new { message = "Pago confirmado.", estado = factura.Estado.ToString() });
     }
 
-    // PUT api/perfiles/constructor/mio/onvo-keys  (guardado de llaves desde el perfil)
-    // Nota: se expone aquí para mantener cohesión de pagos en este controller
-    [HttpPut("/api/perfiles/constructor/mio/onvo-keys")]
-    [Authorize(Roles = "Constructor")]
-    public async Task<IActionResult> GuardarLlaves([FromBody] LlavesOnvoRequest body, CancellationToken ct)
-    {
-        var userId = UserId;
-        var perfil = (await uow.PerfilesConstructor.FindAsync(p => p.UsuarioId == userId)).FirstOrDefault();
-        if (perfil is null) return NotFound(new { message = "Perfil no encontrado." });
-
-        if (!string.IsNullOrWhiteSpace(body.SecretKey))
-            perfil.OnvoSecretKeyEncriptado = Cifrar(body.SecretKey.Trim());
-
-        if (!string.IsNullOrWhiteSpace(body.PublicKey))
-            perfil.OnvoPublicKey = body.PublicKey.Trim();
-
-        await uow.PerfilesConstructor.UpdateAsync(perfil);
-        await uow.SaveChangesAsync();
-
-        await auditoria.RegistrarAsync(userId, User.FindFirstValue("nombre") ?? "",
-            "ActualizarLlavesOnvo", "PerfilesConstructor", perfil.Id.ToString(), "Llaves ONVO actualizadas");
-
-        return Ok(new { message = "Configuración de pagos guardada." });
-    }
 
     // ── Cifrado simétrico simple con clave de config ───────────────────────────
     private string Cifrar(string plain)
@@ -181,7 +170,7 @@ public sealed class OnvoPagosController(
         return Encoding.UTF8.GetBytes(raw.PadRight(32)[..32]);
     }
 
-    private sealed record OnvoIntentResponse(string? Id);
-    public sealed record ConfirmarPagoRequest(string PaymentIntentId);
+    private sealed record OnvoLinkResponse(string? Id, string? Url);
+    public sealed record ConfirmarPagoRequest(string PaymentLinkId);
     public sealed record LlavesOnvoRequest(string? SecretKey, string? PublicKey);
 }

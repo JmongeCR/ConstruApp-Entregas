@@ -20,10 +20,11 @@ import ForumIcon            from '@mui/icons-material/Forum';
 import PaidIcon             from '@mui/icons-material/Paid';
 import CreditCardIcon       from '@mui/icons-material/CreditCard';
 import GppGoodIcon          from '@mui/icons-material/GppGood';
+import ContentCopyIcon      from '@mui/icons-material/ContentCopy';
+import OpenInNewIcon        from '@mui/icons-material/OpenInNew';
 import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
 import { FacturaPDF }           from '../../utils/pdf/FacturaPDF';
 import { facturasApi, perfilesConstructorApi, onvoApi } from '../../api/endpoints';
-import OnvoWidget from '../../components/pagos/OnvoWidget';
 
 const ACCENT = '#2563EB';
 
@@ -197,8 +198,9 @@ export default function FacturaDetalle() {
   const [confirm, setConfirm] = useState({ open: false, type: '', pagoId: null });
   const [toast,   setToast]   = useState({ open: false, msg: '', severity: 'success' });
   const [modalOnvo,    setModalOnvo]    = useState(false);
-  const [onvoIntent,   setOnvoIntent]   = useState(null);  // { paymentIntentId, publicKey }
+  const [onvoLink,     setOnvoLink]     = useState(null);   // { url, linkId }
   const [loadingOnvo,  setLoadingOnvo]  = useState(false);
+  const [copied,       setCopied]       = useState(false);
 
   const notify = (msg, severity = 'success') => setToast({ open: true, msg, severity });
 
@@ -231,23 +233,26 @@ export default function FacturaDetalle() {
     finally { setSaving(false); }
   };
 
-  const handleAbrirOnvo = async () => {
+  const handleGenerarLink = async () => {
     setLoadingOnvo(true);
     try {
       const { data } = await onvoApi.iniciarPago(id);
-      setOnvoIntent(data);
+      setOnvoLink(data);
+      setCopied(false);
       setModalOnvo(true);
     } catch (err) {
-      notify(err.response?.data?.message || 'No fue posible iniciar el pago en línea.', 'error');
+      notify(err.response?.data?.message || 'No fue posible generar el link de pago.', 'error');
     } finally { setLoadingOnvo(false); }
   };
 
-  const handleOnvoSuccess = async (data) => {
+  const handleCopiarLink = async () => {
     try {
-      await onvoApi.confirmarPago(id, { paymentIntentId: onvoIntent.paymentIntentId });
-      setModalOnvo(false); setOnvoIntent(null);
-      cargar(); notify('¡Pago procesado correctamente!');
-    } catch { notify('El pago fue procesado pero ocurrió un error al actualizar la factura. Contactá soporte.', 'warning'); }
+      await navigator.clipboard.writeText(onvoLink.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      notify('No se pudo copiar. Copiá el link manualmente.', 'warning');
+    }
   };
 
   const handleEliminarPago = async () => {
@@ -518,12 +523,12 @@ export default function FacturaDetalle() {
                   <Button size="small" variant="contained"
                     startIcon={loadingOnvo
                       ? <span style={{ width: 14, height: 14, border: '2px solid #fff', borderTop: '2px solid transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
-                      : <PaidIcon sx={{ fontSize: 14 }} />}
-                    onClick={handleAbrirOnvo}
+                      : <CreditCardIcon sx={{ fontSize: 14 }} />}
+                    onClick={handleGenerarLink}
                     disabled={loadingOnvo}
                     sx={{ bgcolor: '#0284C7', '&:hover': { bgcolor: '#0369A1' },
                       fontWeight: 700, textTransform: 'none', height: 32, fontSize: 12.5 }}>
-                    {loadingOnvo ? 'Iniciando…' : 'Pagar en línea'}
+                    {loadingOnvo ? 'Generando…' : 'Link de pago'}
                   </Button>
                 </Box>
               )}
@@ -651,34 +656,51 @@ export default function FacturaDetalle() {
         </DialogActions>
       </Dialog>
 
-      {/* ── Dialog pago en línea ONVO ── */}
-      <Dialog open={modalOnvo} onClose={() => { setModalOnvo(false); setOnvoIntent(null); }}
-        maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2.5 } }}>
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 800, fontSize: 15 }}>
+      {/* ── Dialog link de pago ONVO ── */}
+      <Dialog open={modalOnvo} onClose={() => { setModalOnvo(false); setOnvoLink(null); }}
+        maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 2.5 } }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 800, fontSize: 15, pb: 0.5 }}>
           <CreditCardIcon sx={{ color: '#0284C7' }} />
-          Pagar con tarjeta
+          Link de pago generado
         </DialogTitle>
-        <DialogContent sx={{ pt: '8px !important' }}>
-          {onvoIntent && (
-            <OnvoWidget
-              paymentIntentId={onvoIntent.paymentIntentId}
-              publicKey={onvoIntent.publicKey}
-              onSuccess={handleOnvoSuccess}
-              onError={(err) => {
-                const card = err?.details?.card;
-                const msg = card?.reason === 'issuer_declined'
-                  ? 'El banco rechazó la tarjeta. Intentá con otra.'
-                  : card?.reason === 'gateway_declined'
-                  ? 'La tarjeta no fue aceptada. Intentá de nuevo.'
-                  : err?.message || 'Error al procesar el pago.';
-                notify(msg, 'error');
-              }}
-            />
+        <DialogContent sx={{ pt: '12px !important', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Typography fontSize={13} color="text.secondary">
+            Compartí este link con el cliente para que realice el pago directamente en ONVO Pay.
+          </Typography>
+          {onvoLink && (
+            <Box sx={{ bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 1.5, p: 1.75 }}>
+              <Typography fontSize={11.5} sx={{
+                fontFamily: 'monospace', color: '#0284C7', wordBreak: 'break-all',
+                lineHeight: 1.6,
+              }}>
+                {onvoLink.url}
+              </Typography>
+            </Box>
           )}
+          <Box sx={{ display: 'flex', gap: 1.5 }}>
+            <Button fullWidth variant="outlined" size="small"
+              startIcon={<ContentCopyIcon sx={{ fontSize: 15 }} />}
+              onClick={handleCopiarLink}
+              sx={{ fontWeight: 700, textTransform: 'none', fontSize: 13,
+                borderColor: copied ? '#10B981' : undefined,
+                color: copied ? '#10B981' : undefined }}>
+              {copied ? '¡Copiado!' : 'Copiar link'}
+            </Button>
+            <Button fullWidth variant="contained" size="small"
+              startIcon={<OpenInNewIcon sx={{ fontSize: 15 }} />}
+              component="a" href={onvoLink?.url} target="_blank" rel="noopener noreferrer"
+              sx={{ bgcolor: '#0284C7', '&:hover': { bgcolor: '#0369A1' },
+                fontWeight: 700, textTransform: 'none', fontSize: 13 }}>
+              Abrir en ONVO
+            </Button>
+          </Box>
+          <Typography fontSize={11.5} color="text.disabled" sx={{ textAlign: 'center' }}>
+            Una vez que el cliente pague, registrá el pago manualmente con "Registrar pago".
+          </Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 2.5, pb: 2.5 }}>
-          <Button size="small" onClick={() => { setModalOnvo(false); setOnvoIntent(null); }}>
-            Cancelar
+        <DialogActions sx={{ px: 2.5, pb: 2 }}>
+          <Button size="small" onClick={() => { setModalOnvo(false); setOnvoLink(null); }}>
+            Cerrar
           </Button>
         </DialogActions>
       </Dialog>
