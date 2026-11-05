@@ -202,7 +202,7 @@ export function CotizacionPDF({ cotizacion, analisisIA, proyecto }) {
             <Text style={S.subtitleTxt}>{proyecto?.titulo ?? 'Proyecto'}</Text>
           </View>
           <View style={S.geminiChip}>
-            <Text style={S.geminiTxt}>Llama 3.3 · Groq</Text>
+            <Text style={S.geminiTxt}>Gemini · Google</Text>
             <Text style={S.dateRightTxt}>{fecha}</Text>
           </View>
         </View>
@@ -339,7 +339,7 @@ export function CotizacionPDF({ cotizacion, analisisIA, proyecto }) {
         {/* ── DISCLAIMER ── */}
         <View style={S.disclaimer}>
           <Text style={S.disclaimerTxt}>
-            * Estimacion generada por Inteligencia Artificial (Llama 3.3 via Groq). Los precios son orientativos y pueden
+            * Estimacion generada por Inteligencia Artificial (Gemini via Google). Los precios son orientativos y pueden
             variar segun proveedor, disponibilidad y especificaciones finales. Verificar con el constructor antes de
             comprometerse con el presupuesto.
           </Text>

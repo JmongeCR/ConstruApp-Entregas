@@ -161,7 +161,7 @@ export default function EntrevistaProyecto() {
             Analizar foto o PDF
             <input hidden type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={adjuntar} />
           </Button>
-          <Typography variant="caption" display="block">Se envía el archivo a OpenAI para analizarlo. Máximo 4 MB por archivo.</Typography>
+          <Typography variant="caption" display="block">Se envía el archivo a la IA para analizarlo. Máximo 4 MB por archivo.</Typography>
         </Box>}
         {datos.fuentes.map((fuente, i) => <Box key={i} sx={{ mb: 1 }}>
           <Typography variant="subtitle2">{fuente.nombre}</Typography>

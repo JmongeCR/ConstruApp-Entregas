@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.21.0" />
     <PackageReference Include="MailKit" Version="4.10.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.11" />
@@ -36,9 +37,7 @@
     <ItemGroup>
       <FrontendFiles Include="$(MSBuildProjectDirectory)/../ConstruApp.Web/dist/**/*" />
     </ItemGroup>
-    <Copy SourceFiles="@(FrontendFiles)"
-          DestinationFiles="@(FrontendFiles->'$(MSBuildProjectDirectory)/wwwroot/%(RecursiveDir)%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(FrontendFiles)" DestinationFiles="@(FrontendFiles->'$(MSBuildProjectDirectory)/wwwroot/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
     <Message Text="✅ Frontend copiado a wwwroot/." Importance="high" />
   </Target>
 

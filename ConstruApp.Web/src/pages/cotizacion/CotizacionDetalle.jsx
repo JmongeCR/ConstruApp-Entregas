@@ -93,8 +93,9 @@ export default function CotizacionDetalle() {
       const { data } = await cotizacionIAApi.generar(proyectoId, payload);
       cargarPlanes(data);
       setImagenes([]);
-    } catch {
-      setError('Error al generar la cotización. Intente de nuevo.');
+    } catch (e) {
+      const errors = e.response?.data?.errors;
+      setError(errors ? Object.values(errors).join(' ') : e.response?.data?.message ?? 'Error al generar la cotización. Intente de nuevo.');
     } finally {
       setRegenerando(false);
     }
@@ -124,7 +125,7 @@ export default function CotizacionDetalle() {
               <AutoAwesomeIcon sx={{ color: '#fff', fontSize: 20 }} />
             </Box>
             <Typography variant="h5" fontWeight={800}>Cotización con IA</Typography>
-            <Chip label="Llama 3.3 · Groq" size="small"
+            <Chip label="Gemini · Google" size="small"
               sx={{ bgcolor: '#EFF6FF', color: '#1D4ED8', fontWeight: 700,
                 border: '1px solid #BFDBFE', fontSize: 11 }} />
           </Box>
@@ -235,7 +236,7 @@ export default function CotizacionDetalle() {
         <Box sx={{ mb: 2 }}>
           <LinearProgress sx={{ borderRadius: 2, '& .MuiLinearProgress-bar': { bgcolor: ACCENT } }} />
           <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-            Llama 3.3 está generando 3 propuestas para tu proyecto…
+            Gemini está generando 3 propuestas para tu proyecto…
           </Typography>
         </Box>
       )}

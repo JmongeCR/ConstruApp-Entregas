@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  Alert, Box, Button, Card, CardContent, Chip, CircularProgress,
+  Alert, Autocomplete, Box, Button, Card, CardContent, Chip, CircularProgress,
   Dialog, DialogActions, DialogContent, DialogTitle, IconButton,
   Snackbar, TextField, Typography,
 } from '@mui/material';
@@ -15,6 +15,9 @@ const EMPTY = {
   nombre: '', direccion: '', provincia: '', canton: '', distrito: '', caracteristicas: '',
 };
 
+const UBI = 'https://ubicaciones.paginasweb.cr';
+const toArr = obj => Object.entries(obj).map(([id, nombre]) => ({ id: String(id), nombre }));
+
 export default function Propiedades() {
   const [propiedades, setPropiedades] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +28,16 @@ export default function Propiedades() {
   const [errors, setErrors] = useState({});
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
+
+  // Ubicación cascade
+  const [provincias, setProvincias] = useState([]);
+  const [cantones, setCantones] = useState([]);
+  const [distritos, setDistritos] = useState([]);
+  const [provObj, setProvObj] = useState(null);
+  const [cantObj, setCantObj] = useState(null);
+  const [distObj, setDistObj] = useState(null);
+  const [ubicLoading, setUbicLoading] = useState({ cant: false, dist: false });
+  const editingPropRef = useRef(null);
 
   const notify = (message, severity = 'success') => setToast({ open: true, message, severity });
 
@@ -46,7 +59,59 @@ export default function Propiedades() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Cargar provincias al montar
+  useEffect(() => {
+    fetch(`${UBI}/provincias.json`)
+      .then(r => r.json())
+      .then(d => setProvincias(toArr(d)))
+      .catch(() => {});
+  }, []);
+
+  // Cargar cantones cuando cambia la provincia
+  useEffect(() => {
+    if (!provObj) return;
+    setUbicLoading(p => ({ ...p, cant: true }));
+    fetch(`${UBI}/provincia/${provObj.id}/cantones.json`)
+      .then(r => r.json())
+      .then(d => setCantones(toArr(d)))
+      .catch(() => {})
+      .finally(() => setUbicLoading(p => ({ ...p, cant: false })));
+  }, [provObj?.id]);
+
+  // Cargar distritos cuando cambia el cantón
+  useEffect(() => {
+    if (!cantObj || !provObj) return;
+    setUbicLoading(p => ({ ...p, dist: true }));
+    fetch(`${UBI}/provincia/${provObj.id}/canton/${cantObj.id}/distritos.json`)
+      .then(r => r.json())
+      .then(d => setDistritos(toArr(d)))
+      .catch(() => {})
+      .finally(() => setUbicLoading(p => ({ ...p, dist: false })));
+  }, [cantObj?.id]);
+
+  // Pre-seleccionar provincia al editar (cuando las provincias ya cargaron)
+  useEffect(() => {
+    if (!modal.open || !editingPropRef.current?.provincia || !provincias.length) return;
+    const prov = provincias.find(p => p.nombre === editingPropRef.current.provincia);
+    if (prov) setProvObj(prov);
+  }, [modal.open, provincias]);
+
+  // Pre-seleccionar cantón al editar
+  useEffect(() => {
+    if (!modal.open || !editingPropRef.current?.canton || !cantones.length) return;
+    const cant = cantones.find(c => c.nombre === editingPropRef.current.canton);
+    if (cant) setCantObj(cant);
+  }, [cantones]);
+
+  // Pre-seleccionar distrito al editar
+  useEffect(() => {
+    if (!modal.open || !editingPropRef.current?.distrito || !distritos.length) return;
+    const dist = distritos.find(d => d.nombre === editingPropRef.current.distrito);
+    if (dist) setDistObj(dist);
+  }, [distritos]);
+
   const abrir = (propiedad = null) => {
+    editingPropRef.current = propiedad;
     setModal({ open: true, propiedad });
     setForm(propiedad ? {
       nombre: propiedad.nombre ?? '',
@@ -56,6 +121,11 @@ export default function Propiedades() {
       distrito: propiedad.distrito ?? '',
       caracteristicas: propiedad.caracteristicas ?? '',
     } : EMPTY);
+    setProvObj(null);
+    setCantObj(null);
+    setDistObj(null);
+    setCantones([]);
+    setDistritos([]);
     setFoto(null);
     setErrors({});
   };
@@ -230,12 +300,61 @@ export default function Propiedades() {
           <TextField label="Dirección exacta" value={form.direccion} onChange={set('direccion')}
             error={!!errors.direccion} helperText={errors.direccion} required />
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 1.5 }}>
-            <TextField label="Provincia" value={form.provincia} onChange={set('provincia')}
-              error={!!errors.provincia} helperText={errors.provincia} required />
-            <TextField label="Cantón" value={form.canton} onChange={set('canton')}
-              error={!!errors.canton} helperText={errors.canton} required />
-            <TextField label="Distrito" value={form.distrito} onChange={set('distrito')}
-              error={!!errors.distrito} helperText={errors.distrito} required />
+            <Autocomplete
+              options={provincias}
+              getOptionLabel={o => o.nombre}
+              value={provObj}
+              onChange={(_, val) => {
+                setProvObj(val);
+                setCantObj(null);
+                setDistObj(null);
+                setCantones([]);
+                setDistritos([]);
+                setForm(p => ({ ...p, provincia: val?.nombre ?? '', canton: '', distrito: '' }));
+              }}
+              isOptionEqualToValue={(o, v) => o.id === v.id}
+              noOptionsText="Sin resultados"
+              renderInput={params => (
+                <TextField {...params} label="Provincia" required
+                  error={!!errors.provincia} helperText={errors.provincia} />
+              )}
+            />
+            <Autocomplete
+              options={cantones}
+              getOptionLabel={o => o.nombre}
+              value={cantObj}
+              disabled={!provObj}
+              loading={ubicLoading.cant}
+              onChange={(_, val) => {
+                setCantObj(val);
+                setDistObj(null);
+                setDistritos([]);
+                setForm(p => ({ ...p, canton: val?.nombre ?? '', distrito: '' }));
+              }}
+              isOptionEqualToValue={(o, v) => o.id === v.id}
+              noOptionsText="Sin resultados"
+              renderInput={params => (
+                <TextField {...params} label="Cantón" required
+                  error={!!errors.canton} helperText={errors.canton} />
+              )}
+            />
+            <Autocomplete
+              options={distritos}
+              getOptionLabel={o => o.nombre}
+              value={distObj}
+              disabled={!cantObj}
+              loading={ubicLoading.dist}
+              onChange={(_, val) => {
+                setDistObj(val);
+                setForm(p => ({ ...p, distrito: val?.nombre ?? '' }));
+              }}
+              isOptionEqualToValue={(o, v) => o.id === v.id}
+              noOptionsText="Sin resultados"
+              renderInput={params => (
+                <TextField {...params} label="Distrito" required
+                  error={!!errors.distrito} helperText={errors.distrito} />
+              )}
+            />
           </Box>
           <TextField label="Características" value={form.caracteristicas} onChange={set('caracteristicas')}
             multiline minRows={3} placeholder="Área, número de plantas, condiciones de acceso..." />
