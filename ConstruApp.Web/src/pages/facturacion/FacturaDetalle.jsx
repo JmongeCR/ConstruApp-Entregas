@@ -18,10 +18,12 @@ import CheckCircleIcon      from '@mui/icons-material/CheckCircle';
 import EmailIcon            from '@mui/icons-material/Email';
 import ForumIcon            from '@mui/icons-material/Forum';
 import PaidIcon             from '@mui/icons-material/Paid';
+import CreditCardIcon       from '@mui/icons-material/CreditCard';
 import GppGoodIcon          from '@mui/icons-material/GppGood';
 import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
 import { FacturaPDF }           from '../../utils/pdf/FacturaPDF';
-import { facturasApi, perfilesConstructorApi } from '../../api/endpoints';
+import { facturasApi, perfilesConstructorApi, onvoApi } from '../../api/endpoints';
+import OnvoWidget from '../../components/pagos/OnvoWidget';
 
 const ACCENT = '#2563EB';
 
@@ -194,6 +196,9 @@ export default function FacturaDetalle() {
   const [saving,  setSaving]  = useState(false);
   const [confirm, setConfirm] = useState({ open: false, type: '', pagoId: null });
   const [toast,   setToast]   = useState({ open: false, msg: '', severity: 'success' });
+  const [modalOnvo,    setModalOnvo]    = useState(false);
+  const [onvoIntent,   setOnvoIntent]   = useState(null);  // { paymentIntentId, publicKey }
+  const [loadingOnvo,  setLoadingOnvo]  = useState(false);
 
   const notify = (msg, severity = 'success') => setToast({ open: true, msg, severity });
 
@@ -224,6 +229,25 @@ export default function FacturaDetalle() {
       cargar(); setModalPago(false); notify('Pago registrado correctamente.');
     } catch { notify('Error al registrar el pago.', 'error'); }
     finally { setSaving(false); }
+  };
+
+  const handleAbrirOnvo = async () => {
+    setLoadingOnvo(true);
+    try {
+      const { data } = await onvoApi.iniciarPago(id);
+      setOnvoIntent(data);
+      setModalOnvo(true);
+    } catch (err) {
+      notify(err.response?.data?.message || 'No fue posible iniciar el pago en línea.', 'error');
+    } finally { setLoadingOnvo(false); }
+  };
+
+  const handleOnvoSuccess = async (data) => {
+    try {
+      await onvoApi.confirmarPago(id, { paymentIntentId: onvoIntent.paymentIntentId });
+      setModalOnvo(false); setOnvoIntent(null);
+      cargar(); notify('¡Pago procesado correctamente!');
+    } catch { notify('El pago fue procesado pero ocurrió un error al actualizar la factura. Contactá soporte.', 'warning'); }
   };
 
   const handleEliminarPago = async () => {
@@ -484,13 +508,24 @@ export default function FacturaDetalle() {
                 </Typography>
               </Typography>
               {!pagada && !cancelada && (
-                <Button size="small" variant="contained"
-                  startIcon={<PaymentsIcon sx={{ fontSize: 14 }} />}
-                  onClick={() => setModalPago(true)}
-                  sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#1D4ED8' },
-                    fontWeight: 700, textTransform: 'none', height: 32, fontSize: 12.5 }}>
-                  Registrar pago
-                </Button>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button size="small" variant="outlined"
+                    startIcon={<PaymentsIcon sx={{ fontSize: 14 }} />}
+                    onClick={() => setModalPago(true)}
+                    sx={{ fontWeight: 700, textTransform: 'none', height: 32, fontSize: 12.5 }}>
+                    Registrar pago
+                  </Button>
+                  <Button size="small" variant="contained"
+                    startIcon={loadingOnvo
+                      ? <span style={{ width: 14, height: 14, border: '2px solid #fff', borderTop: '2px solid transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
+                      : <PaidIcon sx={{ fontSize: 14 }} />}
+                    onClick={handleAbrirOnvo}
+                    disabled={loadingOnvo}
+                    sx={{ bgcolor: '#0284C7', '&:hover': { bgcolor: '#0369A1' },
+                      fontWeight: 700, textTransform: 'none', height: 32, fontSize: 12.5 }}>
+                    {loadingOnvo ? 'Iniciando…' : 'Pagar en línea'}
+                  </Button>
+                </Box>
               )}
             </Box>
 
@@ -612,6 +647,38 @@ export default function FacturaDetalle() {
           <Button size="small" variant="contained" color="error"
             onClick={confirm.type === 'anular' ? handleAnular : handleEliminarPago}>
             {confirm.type === 'anular' ? 'Anular' : 'Eliminar'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Dialog pago en línea ONVO ── */}
+      <Dialog open={modalOnvo} onClose={() => { setModalOnvo(false); setOnvoIntent(null); }}
+        maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2.5 } }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 800, fontSize: 15 }}>
+          <CreditCardIcon sx={{ color: '#0284C7' }} />
+          Pagar con tarjeta
+        </DialogTitle>
+        <DialogContent sx={{ pt: '8px !important' }}>
+          {onvoIntent && (
+            <OnvoWidget
+              paymentIntentId={onvoIntent.paymentIntentId}
+              publicKey={onvoIntent.publicKey}
+              onSuccess={handleOnvoSuccess}
+              onError={(err) => {
+                const card = err?.details?.card;
+                const msg = card?.reason === 'issuer_declined'
+                  ? 'El banco rechazó la tarjeta. Intentá con otra.'
+                  : card?.reason === 'gateway_declined'
+                  ? 'La tarjeta no fue aceptada. Intentá de nuevo.'
+                  : err?.message || 'Error al procesar el pago.';
+                notify(msg, 'error');
+              }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 2.5, pb: 2.5 }}>
+          <Button size="small" onClick={() => { setModalOnvo(false); setOnvoIntent(null); }}>
+            Cancelar
           </Button>
         </DialogActions>
       </Dialog>

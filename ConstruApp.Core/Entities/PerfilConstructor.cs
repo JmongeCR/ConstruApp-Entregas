@@ -30,6 +30,10 @@ public class PerfilConstructor
     public string? FormasPago          { get; set; } // JSON: ["Transferencia","SINPE"]
     public string? CuentasBancarias    { get; set; } // JSON: [{banco, iban, tipo}]
 
+    // ── Pasarela de pagos (ONVO) ──────────────────────────────────────────────
+    public string? OnvoSecretKeyEncriptado { get; set; }
+    public string? OnvoPublicKey           { get; set; }
+
     // Navegación
     public Usuario                    Usuario          { get; set; } = null!;
     public ICollection<PortafolioItem> PortafolioItems { get; set; } = [];

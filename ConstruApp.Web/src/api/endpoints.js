@@ -129,6 +129,13 @@ export const facturasApi = {
   enviar:        (id, data)   => api.post(`/facturas/${id}/enviar`, data),
 };
 
+// ── ONVO Pay ──────────────────────────────────────────────────────────────────
+export const onvoApi = {
+  iniciarPago:   (facturaId)       => api.post(`/facturas/${facturaId}/onvo/iniciar`),
+  confirmarPago: (facturaId, data) => api.post(`/facturas/${facturaId}/onvo/confirmar`, data),
+  guardarLlaves: (data)            => api.put('/perfiles/constructor/mio/onvo-keys', data),
+};
+
 // ── Avances de obra ───────────────────────────────────────────────────────────
 export const avancesApi = {
   getProyectos: ()      => api.get('/avances/proyectos'),

@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import {
   Box, Typography, Card, CardContent, TextField, Button,
-  Grid, Alert, Snackbar, Chip, Stack, Divider,
+  Grid, Alert, Snackbar, Chip, Stack, Divider, InputAdornment, IconButton,
 } from '@mui/material';
-import SaveIcon     from '@mui/icons-material/Save';
-import BusinessIcon from '@mui/icons-material/Business';
-import VerifiedIcon from '@mui/icons-material/Verified';
-import PendingIcon  from '@mui/icons-material/HourglassEmpty';
-import { perfilesConstructorApi } from '../../api/endpoints';
+import SaveIcon        from '@mui/icons-material/Save';
+import BusinessIcon    from '@mui/icons-material/Business';
+import VerifiedIcon    from '@mui/icons-material/Verified';
+import PendingIcon     from '@mui/icons-material/HourglassEmpty';
+import PaymentsIcon    from '@mui/icons-material/Payments';
+import VisibilityIcon  from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { perfilesConstructorApi, onvoApi } from '../../api/endpoints';
 import LoadingScreen from '../../components/common/LoadingScreen';
 
 const EMPTY = {
@@ -17,12 +21,15 @@ const EMPTY = {
 };
 
 export default function PerfilConstructorEdit() {
-  const [perfil, setPerfil]     = useState(null);
-  const [form, setForm]         = useState(EMPTY);
-  const [loading, setLoading]   = useState(true);
-  const [saving, setSaving]     = useState(false);
-  const [errors, setErrors]     = useState({});
-  const [toast, setToast]       = useState({ open: false, msg: '', severity: 'success' });
+  const [perfil, setPerfil]       = useState(null);
+  const [form, setForm]           = useState(EMPTY);
+  const [loading, setLoading]     = useState(true);
+  const [saving, setSaving]       = useState(false);
+  const [errors, setErrors]       = useState({});
+  const [toast, setToast]         = useState({ open: false, msg: '', severity: 'success' });
+  const [onvoKeys, setOnvoKeys]   = useState({ secretKey: '', publicKey: '' });
+  const [savingOnvo, setSavingOnvo] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
 
   const notify = (msg, severity = 'success') => setToast({ open: true, msg, severity });
   const set = f => e => { setForm(p => ({ ...p, [f]: e.target.value })); setErrors(p => ({ ...p, [f]: '' })); };
@@ -57,6 +64,20 @@ export default function PerfilConstructorEdit() {
       errs.aniosExperiencia = 'Debe ser un número positivo.';
     setErrors(errs);
     return Object.keys(errs).length === 0;
+  };
+
+  const handleSaveOnvo = async () => {
+    if (!onvoKeys.secretKey && !onvoKeys.publicKey) {
+      notify('Ingresá al menos una llave para guardar.', 'error'); return;
+    }
+    setSavingOnvo(true);
+    try {
+      await onvoApi.guardarLlaves({ secretKey: onvoKeys.secretKey || null, publicKey: onvoKeys.publicKey || null });
+      setOnvoKeys({ secretKey: '', publicKey: '' });
+      notify('Configuración de pagos guardada correctamente.');
+    } catch (err) {
+      notify(err.response?.data?.message || 'Error al guardar las llaves.', 'error');
+    } finally { setSavingOnvo(false); }
   };
 
   const handleSave = async () => {
@@ -194,6 +215,62 @@ export default function PerfilConstructorEdit() {
           </Grid>
         </CardContent>
       </Card>
+
+      {/* Pagos en línea — ONVO */}
+      {perfil?.id && (
+        <Card variant="outlined" sx={{ mb: 3, borderColor: '#E0F2FE' }}>
+          <CardContent sx={{ p: 3 }}>
+            <Stack direction="row" alignItems="center" gap={1} mb={0.5}>
+              <PaymentsIcon sx={{ color: '#0284C7', fontSize: 18 }} />
+              <Typography variant="subtitle2" fontWeight={700} color="text.secondary"
+                sx={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 11 }}>
+                Pagos en línea · ONVO Pay
+              </Typography>
+            </Stack>
+            <Typography variant="caption" color="text.secondary" display="block" mb={2}>
+              Configurá tu cuenta de ONVO Pay para que tus clientes puedan pagarte facturas directamente desde la plataforma.
+              Obtené tus llaves en <strong>onvopay.com</strong> → Dashboard → Desarrolladores.
+              {perfil.onvoPublicKey && (
+                <Chip icon={<CheckCircleIcon sx={{ fontSize: '14px !important' }} />}
+                  label="Pagos configurados" color="success" size="small"
+                  sx={{ ml: 1, fontWeight: 600, fontSize: 11 }} />
+              )}
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField fullWidth label="Secret Key (llave secreta)"
+                  value={onvoKeys.secretKey}
+                  onChange={e => setOnvoKeys(k => ({ ...k, secretKey: e.target.value }))}
+                  type={showSecret ? 'text' : 'password'}
+                  placeholder="onvo_test_sk_... o onvo_live_sk_..."
+                  helperText="Nunca compartas esta llave. Se guarda cifrada en el servidor."
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton size="small" onClick={() => setShowSecret(v => !v)}>
+                          {showSecret ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                        </IconButton>
+                      </InputAdornment>
+                    )
+                  }} />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField fullWidth label="Public Key (llave pública)"
+                  value={onvoKeys.publicKey}
+                  onChange={e => setOnvoKeys(k => ({ ...k, publicKey: e.target.value }))}
+                  placeholder="onvo_test_publishable_key_..."
+                  helperText="Esta llave se usa en el navegador del cliente para mostrar el formulario de pago." />
+              </Grid>
+            </Grid>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+              <Button variant="outlined" size="small" startIcon={<SaveIcon />}
+                onClick={handleSaveOnvo} disabled={savingOnvo}>
+                {savingOnvo ? 'Guardando…' : 'Guardar configuración de pagos'}
+              </Button>
+            </Box>
+          </CardContent>
+        </Card>
+      )}
 
       <Divider sx={{ mb: 3 }} />
 
