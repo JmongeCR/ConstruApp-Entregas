@@ -40,5 +40,6 @@ public interface IUnitOfWork : IDisposable
 
     IRepository<FavoritoProveedor>          FavoritosProveedor     { get; }
     Task GuardarCotizacionConVersionAsync(CotizacionIA cotizacion);
+    Task GuardarCotizacionesConVersionAsync(IReadOnlyList<CotizacionIA> cotizaciones);
     Task<int> SaveChangesAsync();
 }

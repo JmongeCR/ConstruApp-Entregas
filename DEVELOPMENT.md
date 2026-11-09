@@ -68,7 +68,7 @@ ConstruApp.Tests         ← Depends on Core + Infrastructure. xUnit + Moq + EF 
 - Permission constants live in `ConstruApp.Core/Constants/Permisos.cs` in the pattern `Modulo.Accion`
 
 **Services registered in Program.cs:**
-- `IGeminiService` → `GroqService` (llama-3.3-70b-versatile via Groq API — named `"groq"` HttpClient)
+- `ValidacionProyectoIa` → OpenAI Responses API for interviews, attachments and quotation plans.
 - `INotificacionService` → `NotificacionService` (persists to `Notificaciones` table)
 - `IAuditoriaService` → `AuditoriaService` (persists to `AuditoriaLogs` table)
 - `IPermisosService` → `PermisosService`
@@ -80,6 +80,17 @@ ConstruApp.Tests         ← Depends on Core + Infrastructure. xUnit + Moq + EF 
 se guardó localmente en `.env.local`, cargá esa variable en el proceso antes de iniciar el
 backend. `OpenAI__Model` permite cambiar el modelo compatible con texto, imágenes, PDF y salida
 estructurada. El valor predeterminado es `gpt-5-mini`.
+
+Antes de generar planes desde un proyecto manual, la pantalla requiere validar el proyecto.
+La validación se asocia con sus datos actuales. Al modificarlos, hay que validarlo de nuevo.
+Los constructores pueden generar planes para solicitudes abiertas y confirmar monto, plazo y
+descripción antes de convertir un plan propio en una propuesta enviada.
+
+La migración `Sprint3Integracion` agrega la huella de validación y el vínculo entre cotización
+y propuesta. Los documentos nuevos se guardan en `App_Data/documentos` y se descargan mediante
+una ruta autenticada. Ese directorio requiere almacenamiento persistente en el despliegue.
+Las asignaciones de personal usan empleados activos de la empresa contratada. Un empleado
+asignado a otra obra en curso se informa como no disponible.
 
 La migración `EntrevistasIa` guarda historial, ficha, hallazgos y alcance. Para estimar costos
 se usan los rangos de `EstimacionPrecios:PorTipo`. Para estimar plazo y tamaño de cuadrilla se

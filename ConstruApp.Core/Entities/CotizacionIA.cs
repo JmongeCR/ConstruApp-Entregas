@@ -20,6 +20,8 @@ public class CotizacionIA
     // ── Historial ─────────────────────────────────────────────────────────────
     /// <summary>Usuario que ejecutó la generación.</summary>
     public int?   GeneradoPorId { get; set; }
+    public int? PropuestaId { get; set; }
+    public Propuesta? Propuesta { get; set; }
 
     /// <summary>Número de versión dentro del mismo proyecto (1, 2, 3…).</summary>
     public int    Version       { get; set; } = 1;

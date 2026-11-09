@@ -8,6 +8,7 @@ namespace ConstruApp.API.Controllers;
 
 [ApiController]
 [Route("api/trabajadores")]
+[Route("api/empleados")]
 [Authorize]
 public class TrabajadoresController : ControllerBase
 {
@@ -17,6 +18,7 @@ public class TrabajadoresController : ControllerBase
 
     // GET api/trabajadores
     [HttpGet]
+    [HttpGet("mios")]
     public async Task<IActionResult> GetAll()
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);

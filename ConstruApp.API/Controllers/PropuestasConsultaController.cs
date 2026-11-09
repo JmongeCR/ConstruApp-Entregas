@@ -15,6 +15,23 @@ namespace ConstruApp.API.Controllers;
 [Route("api/propuestas")]
 public sealed class PropuestasConsultaController(IUnitOfWork uow) : ControllerBase
 {
+    [HttpGet("solicitudes")]
+    [Authorize(Roles = "Constructor")]
+    public async Task<IActionResult> Solicitudes()
+    {
+        if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId)) return Forbid();
+        var perfil = (await uow.PerfilesConstructor.FindAsync(c => c.UsuarioId == usuarioId)).FirstOrDefault();
+        if (perfil is null) return Ok(Array.Empty<object>());
+        var enviadas = (await uow.Propuestas.FindAsync(p => p.ConstructorId == perfil.Id))
+            .Select(p => p.ProyectoId).ToHashSet();
+        var solicitudes = await uow.Proyectos.FindAsync(p =>
+            p.Estado == EstadoProyecto.Publicado || p.Estado == EstadoProyecto.EnPropuestas);
+        return Ok(solicitudes.Where(p => !enviadas.Contains(p.Id))
+            .OrderByDescending(p => p.FechaEnvioCotizacion ?? p.FechaPublicacion).ThenByDescending(p => p.Id)
+            .Select(p => new { p.Id, p.Titulo, p.Descripcion, p.AreaM2, p.PresupuestoMax,
+                p.Provincia, p.Canton, p.FechaEnvioCotizacion, tipoProyecto = p.TipoProyecto.ToString() }));
+    }
+
     [HttpPost]
     [Authorize(Roles = "Constructor")]
     public async Task<IActionResult> Crear(CrearPropuestaRequest solicitud, [FromServices] AppDbContext db,

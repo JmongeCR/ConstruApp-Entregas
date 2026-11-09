@@ -40,6 +40,7 @@ import {
 } from '../../api/endpoints';
 import { useAuth } from '../../context/AuthContext';
 import { leerAdjuntosAvance, validarAvance } from '../../utils/avancesAdjuntos';
+import PersonalObra from './PersonalObra';
 
 const ACCENT   = '#2563EB';
 const API_BASE = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:5115';
@@ -930,6 +931,7 @@ function TabEquipo({ proyectoId, esConstructor, notify }) {
 
   return (
     <Box>
+      <PersonalObra proyectoId={proyectoId} puedeEditar={esConstructor} notify={notify} />
       {esConstructor && (
         <Button variant="contained" startIcon={<GroupAddIcon />} size="small"
           onClick={() => { resetForm(); setEditMiembro(null); setOpenNew(true); }}
@@ -1627,7 +1629,7 @@ export default function ObraDetalle() {
             <Button
               size="small"
               startIcon={<ArrowBackIcon sx={{ fontSize: 13 }} />}
-              onClick={() => navigate(esConstructor ? '/mis-propuestas' : '/mis-proyectos')}
+              onClick={() => navigate(esConstructor ? '/propuestas' : '/mis-proyectos')}
               sx={{
                 fontSize: 11.5, color: 'rgba(255,255,255,0.45)', textTransform: 'none',
                 py: 0.3, px: 1, fontWeight: 600, minWidth: 0,

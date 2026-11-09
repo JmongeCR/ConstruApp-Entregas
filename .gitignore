@@ -33,6 +33,7 @@ publish/
 ConstruApp.API/wwwroot/assets/
 ConstruApp.API/wwwroot/index.html
 ConstruApp.API/wwwroot/uploads/
+ConstruApp.API/App_Data/
 
 # Rider / VS Code
 .idea/

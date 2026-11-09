@@ -24,13 +24,12 @@ import ReceiptLongIcon   from '@mui/icons-material/ReceiptLong';
 import PhotoLibraryIcon  from '@mui/icons-material/PhotoLibrary';
 import CheckCircleIcon   from '@mui/icons-material/CheckCircle';
 
-import { proyectosApi, documentosApi, constructorApi } from '../../api/endpoints';
+import { documentosApi } from '../../api/endpoints';
 import { useAuth } from '../../context/AuthContext';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const ACCENT    = '#2563EB';
-const API_BASE  = import.meta.env.VITE_API_URL?.replace('/api', '') ?? 'http://localhost:5115';
 
 const CATEGORIAS = ['Todos', 'Contratos', 'Planos', 'Diseños', 'Permisos', 'Facturas', 'Fotografías', 'Videos', 'Otro'];
 
@@ -137,7 +136,7 @@ function UploadDialog({ open, onClose, proyectoId, onUploaded }) {
   }
 
   async function handleSubmit() {
-    if (!fileData && !form.nombre) { setError('Selecciona un archivo.'); return; }
+    if (!fileData) { setError('Seleccioná un archivo.'); return; }
     if (!form.nombre.trim())       { setError('El nombre es requerido.'); return; }
     setUploading(true);
     setError('');
@@ -153,8 +152,8 @@ function UploadDialog({ open, onClose, proyectoId, onUploaded }) {
       onUploaded();
       onClose();
       reset();
-    } catch {
-      setError('Error al subir el archivo. Intente de nuevo.');
+    } catch (err) {
+      setError(err.response?.data?.message ?? 'Error al subir el archivo. Intente de nuevo.');
     } finally {
       setUploading(false);
     }
@@ -197,7 +196,7 @@ function UploadDialog({ open, onClose, proyectoId, onUploaded }) {
                 Haz clic para seleccionar un archivo
               </Typography>
               <Typography fontSize={11.5} color="text.secondary" sx={{ mt: 0.5 }}>
-                PDF, imágenes, videos, ZIP y más
+                PDF, JPEG, PNG, GIF, WebP, DOCX y XLSX. Máximo 10 MB.
               </Typography>
             </>
           )}
@@ -272,8 +271,8 @@ function EditDialog({ open, doc, onClose, onUpdated }) {
       });
       onUpdated();
       onClose();
-    } catch {
-      setError('Error al actualizar. Intente de nuevo.');
+    } catch (err) {
+      setError(err.response?.data?.message ?? 'Error al actualizar. Intente de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -369,7 +368,6 @@ function DeleteDialog({ open, doc, onClose, onDeleted }) {
 
 export default function Documentos() {
   const { usuario }      = useAuth();
-  const esConstructor    = usuario?.rol === 'Constructor';
 
   const [proyectos,      setProyectos]     = useState([]);
   const [proyectoId,     setProyectoId]    = useState('');
@@ -385,17 +383,7 @@ export default function Documentos() {
 
   // Load user projects on mount — constructor uses dashboard, cliente uses getMios
   useEffect(() => {
-    const loader = esConstructor
-      ? constructorApi.dashboard().then(res => {
-          const proyMap = {};
-          (res.data?.clientes ?? []).forEach(c => {
-            if (!proyMap[c.proyectoId]) {
-              proyMap[c.proyectoId] = { id: c.proyectoId, titulo: c.proyectoTitulo };
-            }
-          });
-          return Object.values(proyMap);
-        })
-      : proyectosApi.getMios().then(res => res.data ?? []);
+    const loader = documentosApi.proyectos().then(res => res.data ?? []);
 
     loader
       .then(lista => {
@@ -404,7 +392,7 @@ export default function Documentos() {
       })
       .catch(() => setError('Error al cargar proyectos.'))
       .finally(() => setLoadingProyectos(false));
-  }, [esConstructor]);
+  }, [usuario?.id]);
 
   // Load docs when project changes
   const loadDocs = useCallback(async () => {
@@ -441,14 +429,18 @@ export default function Documentos() {
 
   const proyectoActual = proyectos.find(p => p.id === proyectoId);
 
-  function handleDownload(doc) {
-    const url = doc.url?.startsWith('http') ? doc.url : `${API_BASE}${doc.url}`;
-    const a   = document.createElement('a');
-    a.href    = url;
-    a.target  = '_blank';
-    a.rel     = 'noopener noreferrer';
-    a.download = doc.nombreArchivo;
-    a.click();
+  async function handleDownload(doc) {
+    try {
+      const { data } = await documentosApi.descargar(doc.id);
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.nombreArchivo;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      setError('No se pudo descargar el archivo.');
+    }
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -485,7 +477,7 @@ export default function Documentos() {
             variant="contained" size="small"
             startIcon={<UploadFileIcon sx={{ fontSize: 14 }} />}
             onClick={() => setUploadOpen(true)}
-            disabled={!proyectoId}
+            disabled={!proyectoActual?.puedeEditar}
             sx={{ fontSize: 12.5, whiteSpace: 'nowrap' }}>
             Subir documento
           </Button>
@@ -661,13 +653,13 @@ export default function Documentos() {
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Editar">
-                            <IconButton size="small" onClick={() => setEditDoc(doc)}
+                            <IconButton size="small" disabled={!proyectoActual?.puedeEditar} onClick={() => setEditDoc(doc)}
                               sx={{ color: '#CBD5E1', '&:hover': { color: '#D97706', bgcolor: '#FFFBEB' } }}>
                               <EditOutlinedIcon sx={{ fontSize: 15 }} />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Eliminar">
-                            <IconButton size="small" onClick={() => setDeleteDoc(doc)}
+                            <IconButton size="small" disabled={!proyectoActual?.puedeEditar} onClick={() => setDeleteDoc(doc)}
                               sx={{ color: '#CBD5E1', '&:hover': { color: '#DC2626', bgcolor: '#FEF2F2' } }}>
                               <DeleteIcon sx={{ fontSize: 15 }} />
                             </IconButton>

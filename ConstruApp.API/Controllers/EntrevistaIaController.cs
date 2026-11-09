@@ -177,6 +177,7 @@ public sealed class EntrevistaIaController(AppDbContext db, ValidacionProyectoIa
             AreaM2 = datos.Alcance.AreaM2,
             Estado = EstadoProyecto.Borrador
         };
+        entrevista.Proyecto.ValidacionIaHash = ValidacionProyectoEstado.Huella(entrevista.Proyecto);
         return await Guardar(entrevista, datos, ct);
     }
 

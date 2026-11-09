@@ -17,6 +17,8 @@ services:
         sync: false
       - key: Email__Password
         sync: false
+      - key: OPENAI_API_KEY
+        sync: false
       - key: Gemini__ApiKey
         sync: false
       - key: Groq__ApiKey

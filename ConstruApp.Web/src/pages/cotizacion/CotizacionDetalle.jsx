@@ -20,6 +20,8 @@ import PictureAsPdfIcon       from '@mui/icons-material/PictureAsPdf';
 import { PDFDownloadLink }    from '@react-pdf/renderer';
 import { CotizacionPDF }      from '../../utils/pdf/CotizacionPDF';
 import { cotizacionIAApi, proyectosApi } from '../../api/endpoints';
+import { useAuth } from '../../context/AuthContext';
+import ConvertirPropuestaDialog from '../cotizaciones-ia/ConvertirPropuestaDialog';
 
 const ACCENT = '#2563EB';
 
@@ -40,6 +42,10 @@ function fmt(n) {
 }
 
 export default function CotizacionDetalle() {
+  const { usuario } = useAuth();
+  const [convertir, setConvertir] = useState(null);
+  const [validando, setValidando] = useState(false);
+  const [recomendaciones, setRecomendaciones] = useState('');
   const { proyectoId } = useParams();
   const navigate       = useNavigate();
   const fileRef        = useRef(null);
@@ -101,6 +107,19 @@ export default function CotizacionDetalle() {
     }
   };
 
+  const handleValidar = async () => {
+    setValidando(true); setError(''); setRecomendaciones('');
+    try {
+      const { data } = await cotizacionIAApi.validarProyecto(proyectoId);
+      setRecomendaciones(data.recomendaciones);
+      const actual = await proyectosApi.getById(proyectoId);
+      setProyecto(actual.data);
+    } catch (err) {
+      const errores = err.response?.data?.errors;
+      setError(errores ? Object.values(errores).join(' ') : err.response?.data?.message ?? 'No se pudo validar el proyecto.');
+    } finally { setValidando(false); }
+  };
+
   if (loading) return <LinearProgress />;
 
   const proyectoCompletado = proyecto?.estado === 'Completado';
@@ -111,10 +130,26 @@ export default function CotizacionDetalle() {
 
   return (
     <Box sx={{ maxWidth: 980, mx: 'auto' }}>
+      <Box sx={{ mb: 2 }}>
+        <Button variant="outlined" disabled={validando || regenerando} onClick={handleValidar}>
+          {validando ? 'Validando…' : 'Validar proyecto con IA'}
+        </Button>
+        {proyecto?.validacionIaVigente && <Chip label="Validación vigente" color="success" size="small" sx={{ ml: 1 }} />}
+        {recomendaciones && <Alert severity="info" sx={{ mt: 1 }}>{recomendaciones}</Alert>}
+        {usuario?.rol === 'Constructor' && cotizacion &&
+          (cotizacion.estado ?? 'Activa') === 'Activa' &&
+          ['Publicado', 'EnPropuestas'].includes(proyecto?.estado) && <Button sx={{ ml: 1 }} variant="contained"
+          onClick={async () => {
+            try { const { data } = await cotizacionIAApi.getById(cotizacion.id); setConvertir(data); }
+            catch { setError('No se pudo cargar la cotización.'); }
+          }}>Revisar y enviar propuesta</Button>}
+      </Box>
+      {convertir && <ConvertirPropuestaDialog cotizacion={convertir} onClose={() => setConvertir(null)}
+        onConverted={() => navigate('/propuestas')} />}
       {/* ── Back + Header ─────────────────────────────────────────── */}
-      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/mis-proyectos')}
+      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(usuario?.rol === 'Constructor' ? '/propuestas' : '/mis-proyectos')}
         sx={{ mb: 2, color: 'text.secondary' }}>
-        Mis proyectos
+        {usuario?.rol === 'Constructor' ? 'Mis propuestas' : 'Mis proyectos'}
       </Button>
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
@@ -125,7 +160,7 @@ export default function CotizacionDetalle() {
               <AutoAwesomeIcon sx={{ color: '#fff', fontSize: 20 }} />
             </Box>
             <Typography variant="h5" fontWeight={800}>Cotización con IA</Typography>
-            <Chip label="Gemini · Google" size="small"
+            <Chip label="OpenAI" size="small"
               sx={{ bgcolor: '#EFF6FF', color: '#1D4ED8', fontWeight: 700,
                 border: '1px solid #BFDBFE', fontSize: 11 }} />
           </Box>
@@ -236,7 +271,7 @@ export default function CotizacionDetalle() {
         <Box sx={{ mb: 2 }}>
           <LinearProgress sx={{ borderRadius: 2, '& .MuiLinearProgress-bar': { bgcolor: ACCENT } }} />
           <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-            Gemini está generando 3 propuestas para tu proyecto…
+            La IA está generando 3 planes para tu proyecto…
           </Typography>
         </Box>
       )}
@@ -287,7 +322,7 @@ export default function CotizacionDetalle() {
                     {fmt(cotizacion.rangoMaximo)}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    Incluye ±15% de variación por imprevistos
+                    Rango orientativo sujeto a validación profesional
                   </Typography>
                 </Box>
 
@@ -358,7 +393,7 @@ export default function CotizacionDetalle() {
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography fontWeight={700}>Desglose detallado</Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {lineas.length} ítems • Precios en CRC 2025
+                  {lineas.length} ítems • Precios estimados en CRC
                 </Typography>
               </Box>
 

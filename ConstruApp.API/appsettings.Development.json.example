@@ -18,6 +18,9 @@
     "EmailOrigen": "tu-correo@gmail.com",
     "HabilitarEnvio": true
   },
+  "OpenAI": {
+    "Model": "gpt-5-mini"
+  },
   "Frontend": {
     "BaseUrl": "http://localhost:5173"
   }

@@ -61,11 +61,12 @@ export const cotizacionIAApi = {
   getHistorial:    (pid)          => api.get(`/cotizacion-ia/proyecto/${pid}/historial`),
   // Generación
   generar:         (pid, payload) => api.post(`/cotizacion-ia/generar/${pid}`, payload ?? {}),
+  validarProyecto: (pid)          => api.post(`/cotizacion-ia/validar/${pid}`),
   analizarImagen:  (payload)      => api.post('/cotizacion-ia/analizar-imagen', payload),
   // Acciones
   duplicar:        (id)           => api.post(`/cotizacion-ia/${id}/duplicar`),
   cambiarEstado:   (id, estado)   => api.put(`/cotizacion-ia/${id}/estado`, { estado }),
-  convertirPropuesta:   (id)      => api.post(`/cotizacion-ia/${id}/convertir-propuesta`),
+  convertirPropuesta:   (id, data) => api.post(`/cotizacion-ia/${id}/convertir-propuesta`, data),
   convertirPresupuesto: (id)      => api.post(`/cotizacion-ia/${id}/convertir-presupuesto`),
 };
 
@@ -188,8 +189,10 @@ export const mensajesApi = {
 
 // ── Documentos ────────────────────────────────────────────────────────────────
 export const documentosApi = {
+  proyectos:      ()            => api.get('/documentos/proyectos'),
   getByProyecto:  (pid, params) => api.get(`/documentos/proyecto/${pid}`, { params }),
   getById:        (id)          => api.get(`/documentos/${id}`),
+  descargar:      (id)          => api.get(`/documentos/${id}/contenido`, { responseType: 'blob' }),
   upload:         (data)        => api.post('/documentos', data),
   update:         (id, data)    => api.put(`/documentos/${id}`, data),
   delete:         (id)          => api.delete(`/documentos/${id}`),

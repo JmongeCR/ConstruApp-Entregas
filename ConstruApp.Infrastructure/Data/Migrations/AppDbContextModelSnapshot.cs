@@ -66,6 +66,7 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<int>("Version")
+                        .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(1);
@@ -371,6 +372,10 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.Property<string>("Plan")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("PropuestaId")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
                     b.Property<int>("ProyectoId")
                         .HasColumnType("int");
 
@@ -403,6 +408,8 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.HasIndex("FechaGeneracion");
 
                     b.HasIndex("GeneradoPorId");
+
+                    b.HasIndex("PropuestaId");
 
                     b.HasIndex("ProyectoId");
 
@@ -1686,6 +1693,10 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("ValidacionIaHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ClienteId");
@@ -2191,6 +2202,11 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                         .HasForeignKey("GeneradoPorId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("ConstruApp.Core.Entities.Propuesta", "Propuesta")
+                        .WithMany()
+                        .HasForeignKey("PropuestaId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("ConstruApp.Core.Entities.Proyecto", "Proyecto")
                         .WithMany("CotizacionesIA")
                         .HasForeignKey("ProyectoId")
@@ -2198,6 +2214,8 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("GeneradoPor");
+
+                    b.Navigation("Propuesta");
 
                     b.Navigation("Proyecto");
                 });

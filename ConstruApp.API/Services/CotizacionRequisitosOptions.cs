@@ -16,6 +16,8 @@ public sealed class CotizacionRequisitosOptions
         ["Permiso"] = "Permiso", ["Factura"] = "Factura", ["Fotografia"] = "Fotografia",
         ["foto"] = "Fotografia", ["Video"] = "Video", ["Otro"] = "Otro",
         ["doc"] = "Documento", ["Documento"] = "Documento",
+        ["Contratos"] = "Contrato", ["Planos"] = "Plano", ["Diseños"] = "Diseño",
+        ["Permisos"] = "Permiso", ["Facturas"] = "Factura", ["Fotografías"] = "Fotografia", ["Videos"] = "Video",
     };
 
     public bool EsValida() => DocumentosPorTipo is not null && DocumentosPorTipo.All(regla =>
