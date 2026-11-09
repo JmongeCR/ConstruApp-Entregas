@@ -83,7 +83,7 @@ const NAV_LINKS = [
   { label: 'Mis proyectos',    path: '/mis-proyectos',         Icon: FolderOpenOutlinedIcon,     roles: ['Cliente'] },
   { label: 'Mis propiedades',  path: '/propiedades',           Icon: HomeWorkOutlinedIcon,       roles: ['Cliente'] },
   { label: 'Constructores',    path: '/marketplace',           Icon: StoreOutlinedIcon,          roles: ['Cliente'] },
-  { label: 'Cotizaciones IA',  path: '/cotizaciones-ia',       Icon: AutoAwesomeOutlinedIcon,    roles: ['Cliente'] },
+  { label: 'Cotizaciones IA',  path: '/cotizaciones-ia',       Icon: AutoAwesomeOutlinedIcon,    roles: ['Cliente','Constructor'] },
   { label: 'Cronograma',       path: '/cronograma',            Icon: TimelineOutlinedIcon,       roles: ['Cliente'] },
   { label: 'Calendario',       path: '/calendario',            Icon: CalendarMonthOutlinedIcon,  roles: ['Cliente'] },
   { label: 'Mis trabajadores', path: '/trabajadores',          Icon: EngineeringIcon,            roles: ['Constructor'] },
@@ -328,11 +328,11 @@ function AppRoutes() {
         <Route path="/publicar"                element={<RoleGuard roles={['Cliente','Admin']}><PublicarProyecto /></RoleGuard>} />
         <Route path="/publicar/:proyectoId"    element={<RoleGuard roles={['Cliente','Admin']}><PublicarProyecto /></RoleGuard>} />
         <Route path="/marketplace"             element={<RoleGuard roles={['Cliente','Admin','Constructor']}><Marketplace /></RoleGuard>} />
-        <Route path="/cotizaciones-ia"         element={<RoleGuard roles={['Cliente','Admin']}><CotizacionesIA /></RoleGuard>} />
+        <Route path="/cotizaciones-ia"         element={<RoleGuard roles={['Cliente','Constructor','Admin']}><CotizacionesIA /></RoleGuard>} />
         <Route path="/cronograma"              element={<RoleGuard roles={['Cliente','Admin']}><Cronograma /></RoleGuard>} />
         <Route path="/calendario"             element={<RoleGuard roles={['Cliente','Admin']}><Calendario /></RoleGuard>} />
         <Route path="/cotizaciones"            element={<RoleGuard roles={['Cliente','Admin']}><Cotizaciones /></RoleGuard>} />
-        <Route path="/cotizacion/:proyectoId"   element={<RoleGuard roles={['Cliente','Admin']}><CotizacionDetalle /></RoleGuard>} />
+        <Route path="/cotizacion/:proyectoId"   element={<RoleGuard roles={['Cliente','Constructor','Admin']}><CotizacionDetalle /></RoleGuard>} />
         <Route path="/proyectos/:proyectoId/sugerencia-precios" element={<RoleGuard roles={['Cliente','Admin']}><SugerenciaPrecios /></RoleGuard>} />
         <Route path="/proyectos/:proyectoId/comparar-cotizaciones" element={<RoleGuard roles={['Cliente','Admin']}><CompararCotizaciones /></RoleGuard>} />
         <Route path="/ia"                      element={<RoleGuard roles={['Cliente','Admin']}><IAEmpresarial /></RoleGuard>} />

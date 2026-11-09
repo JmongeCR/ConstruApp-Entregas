@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import SolicitudesDisponibles from './SolicitudesDisponibles';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box, Typography, Card, CardContent, Grid, Button, Chip,
@@ -481,6 +482,8 @@ export function MisPropuestas() {
           Enviar propuesta
         </Button>
       </Box>
+
+      <SolicitudesDisponibles />
 
       {propuestas.length === 0 ? (
         <Box sx={{

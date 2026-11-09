@@ -85,34 +85,44 @@ public class UnitOfWork : IUnitOfWork
     }
 
     public async Task GuardarCotizacionConVersionAsync(CotizacionIA cotizacion)
+        => await GuardarCotizacionesConVersionAsync([cotizacion]);
+
+    public async Task GuardarCotizacionesConVersionAsync(IReadOnlyList<CotizacionIA> cotizaciones)
     {
+        if (cotizaciones.Count == 0) return;
+        var proyectoId = cotizaciones[0].ProyectoId;
+        if (cotizaciones.Any(c => c.ProyectoId != proyectoId))
+            throw new ArgumentException("Las cotizaciones deben pertenecer al mismo proyecto.", nameof(cotizaciones));
         if (_context.Database.IsSqlServer())
         {
             await using var transaccion = await _context.Database.BeginTransactionAsync();
-            var recurso = $"ConstruApp:CotizacionIA:{cotizacion.ProyectoId}";
+            var recurso = $"ConstruApp:CotizacionIA:{proyectoId}";
             await _context.Database.ExecuteSqlInterpolatedAsync($"""
                 DECLARE @resultado int;
                 EXEC @resultado = sys.sp_getapplock @Resource = {recurso},
                     @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 10000;
                 IF @resultado < 0 THROW 50001, 'No fue posible reservar la versión de la estimación.', 1;
                 """);
-            await InsertarCotizacionVersionada(cotizacion);
+            await InsertarCotizacionesVersionadas(cotizaciones);
             await transaccion.CommitAsync();
             return;
         }
 
         await VersionesEnMemoria.WaitAsync();
-        try { await InsertarCotizacionVersionada(cotizacion); }
+        try { await InsertarCotizacionesVersionadas(cotizaciones); }
         finally { VersionesEnMemoria.Release(); }
     }
 
-    private async Task InsertarCotizacionVersionada(CotizacionIA cotizacion)
+    private async Task InsertarCotizacionesVersionadas(IReadOnlyList<CotizacionIA> cotizaciones)
     {
         var ultimaVersion = await _context.CotizacionesIA
-            .Where(c => c.ProyectoId == cotizacion.ProyectoId)
+            .Where(c => c.ProyectoId == cotizaciones[0].ProyectoId)
             .MaxAsync(c => (int?)c.Version) ?? 0;
-        cotizacion.Version = checked(ultimaVersion + 1);
-        await CotizacionesIA.AddAsync(cotizacion);
+        foreach (var cotizacion in cotizaciones)
+        {
+            cotizacion.Version = checked(++ultimaVersion);
+            await CotizacionesIA.AddAsync(cotizacion);
+        }
         await SaveChangesAsync();
     }
 

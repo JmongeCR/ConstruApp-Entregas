@@ -21,6 +21,7 @@ public class Proyecto
     // Presupuesto y área (opcionales — el cliente los informa)
     public decimal? PresupuestoMax { get; set; }
     public decimal? AreaM2         { get; set; }
+    public string? ValidacionIaHash { get; set; }
 
     public DateTime  FechaPublicacion { get; set; } = DateTime.UtcNow;
     public DateTime? FechaEnvioCotizacion { get; set; }

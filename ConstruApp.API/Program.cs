@@ -92,8 +92,9 @@ builder.Services.AddRateLimiter(options =>
 // ── Servicios ──────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IPermisosService,  PermisosService>();
 builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
+builder.Services.AddScoped<AccesoProyectoService>();
 builder.Services.AddHttpClient();
-builder.Services.AddHttpClient<ValidacionProyectoIa>(client => client.Timeout = TimeSpan.FromSeconds(20));
+builder.Services.AddHttpClient<ValidacionProyectoIa>(client => client.Timeout = TimeSpan.FromSeconds(45));
 builder.Services.AddOptions<RangosPreciosOptions>()
     .Bind(builder.Configuration.GetSection(RangosPreciosOptions.SectionName))
     .Validate(options => options.EsValida(), "Los rangos de precios contienen tipos, límites o fuentes inválidos.")

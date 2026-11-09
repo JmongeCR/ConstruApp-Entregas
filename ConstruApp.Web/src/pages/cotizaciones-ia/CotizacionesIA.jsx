@@ -28,6 +28,7 @@ import { CotizacionPDF }        from '../../utils/pdf/CotizacionPDF';
 import { cotizacionIAApi }      from '../../api/endpoints';
 import { useAuth }              from '../../context/AuthContext';
 import EntrevistaProyecto       from './EntrevistaProyecto';
+import ConvertirPropuestaDialog from './ConvertirPropuestaDialog';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const fmt  = n => (n ?? 0).toLocaleString('es-CR', { style: 'currency', currency: 'CRC', maximumFractionDigits: 0 });
@@ -70,6 +71,8 @@ function EstadoChipLocal({ estado }) {
 
 // ── Menú de acciones por fila ──────────────────────────────────────────────────
 function AccionesMenu({ row, onRefresh, onToast, onComparar, comparando }) {
+  const { usuario } = useAuth();
+  const [convertir, setConvertir] = useState(null);
   const navigate  = useNavigate();
   const [anchor, setAnchor]     = useState(null);
   const [pdfData, setPdfData]   = useState(null);
@@ -99,7 +102,7 @@ function AccionesMenu({ row, onRefresh, onToast, onComparar, comparando }) {
       <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}
         PaperProps={{ sx: { minWidth: 200, borderRadius: 1.5, border: '1px solid #E5E7EB' } }}>
 
-        <MenuItem dense onClick={() => { setAnchor(null); navigate(`/cotizacion/${row.proyectoId}`); }}>
+        <MenuItem dense onClick={() => { setAnchor(null); navigate(`/cotizacion/${row.proyectoId}?cotizacionId=${row.id}`); }}>
           <VisibilityIcon sx={{ fontSize: 16, mr: 1.5, color: '#64748B' }} /> Ver cotización
         </MenuItem>
 
@@ -127,9 +130,13 @@ function AccionesMenu({ row, onRefresh, onToast, onComparar, comparando }) {
 
         <Divider />
 
-        <MenuItem dense onClick={() => accion(() => cotizacionIAApi.convertirPropuesta(row.id), 'Propuesta creada')}>
+        {usuario?.rol === 'Constructor' && row.puedeCambiarEstado && row.estado === 'Activa' && <MenuItem dense onClick={async () => {
+          setAnchor(null);
+          try { const { data } = await cotizacionIAApi.getById(row.id); setConvertir(data); }
+          catch { onToast('No se pudo cargar la cotización.', 'error'); }
+        }}>
           <PostAddIcon sx={{ fontSize: 16, mr: 1.5, color: '#64748B' }} /> Convertir a Propuesta
-        </MenuItem>
+        </MenuItem>}
 
         <MenuItem dense onClick={() => accion(() => cotizacionIAApi.convertirPresupuesto(row.id), 'Partidas de presupuesto creadas')}>
           <AccountBalanceWalletIcon sx={{ fontSize: 16, mr: 1.5, color: '#64748B' }} /> Convertir a Presupuesto
@@ -159,18 +166,20 @@ function AccionesMenu({ row, onRefresh, onToast, onComparar, comparando }) {
 
         <Divider />
 
-        {row.estado === 'Activa' ? (
+        {row.puedeCambiarEstado && row.estado === 'Activa' ? (
           <MenuItem dense onClick={() => accion(() => cotizacionIAApi.cambiarEstado(row.id, 'Archivada'), 'Cotización archivada')}>
             <ArchiveIcon sx={{ fontSize: 16, mr: 1.5, color: '#94A3B8' }} />
             <Typography fontSize={13} color="text.secondary">Archivar</Typography>
           </MenuItem>
-        ) : (
+        ) : row.puedeCambiarEstado && row.estado === 'Archivada' ? (
           <MenuItem dense onClick={() => accion(() => cotizacionIAApi.cambiarEstado(row.id, 'Activa'), 'Cotización reactivada')}>
             <UnarchiveIcon sx={{ fontSize: 16, mr: 1.5, color: '#2563EB' }} />
             <Typography fontSize={13} color="#2563EB">Reactivar</Typography>
           </MenuItem>
-        )}
+        ) : null}
       </Menu>
+      {convertir && <ConvertirPropuestaDialog cotizacion={convertir} onClose={() => setConvertir(null)}
+        onConverted={() => { setConvertir(null); onToast('Propuesta enviada al cliente.'); onRefresh(); }} />}
     </>
   );
 }

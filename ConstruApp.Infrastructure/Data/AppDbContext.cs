@@ -98,6 +98,7 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
             e.Property(p => p.Distrito).HasMaxLength(100);
             e.Property(p => p.PresupuestoMax).HasColumnType("decimal(18,2)");
             e.Property(p => p.AreaM2).HasColumnType("decimal(10,2)");
+            e.Property(p => p.ValidacionIaHash).HasMaxLength(64);
 
             e.HasOne(p => p.Cliente)
              .WithMany(u => u.Proyectos)
@@ -144,6 +145,7 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
         builder.Entity<ArchivoProyecto>(e =>
         {
             e.HasKey(a => a.Id);
+            e.Property(a => a.Version).IsConcurrencyToken();
             e.Property(a => a.Url).HasMaxLength(500).IsRequired();
             e.Property(a => a.NombreArchivo).HasMaxLength(200);
             e.Property(a => a.TipoArchivo).HasMaxLength(30);
@@ -170,8 +172,11 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
             e.Property(c => c.RangoMinimo).HasColumnType("decimal(18,2)");
             e.Property(c => c.RangoMaximo).HasColumnType("decimal(18,2)");
             e.Property(c => c.ResumenIA).HasMaxLength(5000);
-            e.Property(c => c.Estado).HasMaxLength(40).HasDefaultValue("Activa");
+            e.Property(c => c.Estado).HasMaxLength(40).HasDefaultValue("Activa").IsConcurrencyToken();
             e.Property(c => c.Version).HasDefaultValue(1);
+            e.Property(c => c.PropuestaId).IsConcurrencyToken();
+            e.HasIndex(c => new { c.ProyectoId, c.GeneracionId });
+            e.HasOne(c => c.Propuesta).WithMany().HasForeignKey(c => c.PropuestaId).OnDelete(DeleteBehavior.NoAction);
 
             // Múltiples cotizaciones por proyecto (historial)
             e.HasOne(c => c.Proyecto)

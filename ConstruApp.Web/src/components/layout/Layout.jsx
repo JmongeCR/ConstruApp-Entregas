@@ -67,7 +67,7 @@ const SECTIONS_CONSTRUCTOR = [
     { label: 'Proyectos',   path: '/marketplace', Icon: StorefrontIcon },
   ]},
   { label: 'Gestión', items: [
-    { label: 'Mis propuestas', path: '/mis-propuestas', Icon: SendIcon },
+    { label: 'Mis propuestas', path: '/propuestas', Icon: SendIcon },
     { label: 'Mis clientes',   path: '/mis-clientes',   Icon: PeopleAltIcon },
     { label: 'Cronograma',     path: '/cronograma',     Icon: ViewTimelineIcon },
     { label: 'Documentos',     path: '/documentos',     Icon: DescriptionIcon },

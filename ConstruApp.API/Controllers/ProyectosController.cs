@@ -293,6 +293,7 @@ public class ProyectosController : ControllerBase
         p.Distrito,
         p.PresupuestoMax,
         p.AreaM2,
+        validacionIaVigente = p.ValidacionIaHash == ValidacionProyectoEstado.Huella(p),
         p.FechaPublicacion,
         p.FechaEnvioCotizacion,
         p.FechaInicio,

@@ -2,6 +2,9 @@ using System.Security.Claims;
 using System.Text.Json;
 using ConstruApp.Core.Entities;
 using ConstruApp.Core.Interfaces;
+using ConstruApp.Core.Enums;
+using ConstruApp.Infrastructure.Data;
+using System.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,12 +13,76 @@ namespace ConstruApp.API.Controllers;
 
 [ApiController]
 [Route("api/cotizacion-ia")]
-[Authorize(Roles = "Cliente,Admin")]
+[Authorize(Roles = "Cliente,Constructor,Admin")]
 public sealed class CotizacionIAController : ControllerBase
 {
     private readonly IUnitOfWork _uow;
 
     public CotizacionIAController(IUnitOfWork uow) => _uow = uow;
+
+    [HttpGet("proyecto/{proyectoId:int}")]
+    public async Task<IActionResult> PorProyecto(int proyectoId, [FromQuery] int? cotizacionId = null)
+    {
+        if (cotizacionId is <= 0) return BadRequest();
+        var query = QueryVisible().Where(c => c.ProyectoId == proyectoId);
+        var elegida = cotizacionId.HasValue
+            ? await query.FirstOrDefaultAsync(c => c.Id == cotizacionId.Value)
+            : await query.OrderByDescending(c => c.FechaGeneracion).ThenByDescending(c => c.Id).FirstOrDefaultAsync();
+        if (elegida is null) return cotizacionId.HasValue ? NotFound() : Ok(Array.Empty<object>());
+        // Los registros anteriores sin generación se consultan individualmente.
+        var rows = await query.Where(c => elegida.GeneracionId.HasValue
+                ? c.GeneracionId == elegida.GeneracionId && c.GeneradoPorId == elegida.GeneradoPorId
+                : c.Id == elegida.Id)
+            .OrderBy(c => c.Id).ToListAsync();
+        return Ok(rows.Select(Map));
+    }
+
+    [HttpPut("{id:int}/estado")]
+    public async Task<IActionResult> CambiarEstado(int id, EstadoCotizacionRequest req)
+    {
+        if (req.Estado is not ("Activa" or "Archivada")) return BadRequest();
+        if (!await QueryVisible().AnyAsync(c => c.Id == id)) return NotFound();
+        // Cargar solo la entidad que se modifica, sin adjuntar el grafo de lectura.
+        var cotizacion = await _uow.CotizacionesIA.GetByIdAsync(id);
+        if (cotizacion is null) return NotFound();
+        if (!PuedeCambiarEstado(cotizacion)) return Forbid();
+        if (cotizacion.PropuestaId.HasValue || cotizacion.Estado is not ("Activa" or "Archivada"))
+            return Conflict(new { message = "La cotización ya no permite este cambio de estado." });
+        cotizacion.Estado = req.Estado;
+        try { await _uow.SaveChangesAsync(); }
+        catch (DbUpdateConcurrencyException)
+        { return Conflict(new { message = "La cotización cambió mientras la actualizabas. Revisá su estado actual." }); }
+        return NoContent();
+    }
+
+    [HttpPost("{id:int}/convertir-propuesta")]
+    [Authorize(Roles = "Constructor")]
+    public async Task<IActionResult> Convertir(int id, ConvertirCotizacionRequest req, [FromServices] AppDbContext db, CancellationToken ct)
+    {
+        var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        await using var tx = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct) : null;
+        var cotizacion = await db.CotizacionesIA.SingleOrDefaultAsync(c => c.Id == id && c.GeneradoPorId == usuarioId, ct);
+        if (cotizacion is null) return NotFound();
+        if (cotizacion.PropuestaId.HasValue) return Ok(new { propuestaId = cotizacion.PropuestaId.Value });
+        if (req.MontoTotal is <= 0 or > 9999999999999999.99m ||
+            req.MontoTotal != decimal.Round(req.MontoTotal, 2) || req.PlazoEstimadoDias <= 0 ||
+            string.IsNullOrWhiteSpace(req.Descripcion) || req.Descripcion.Trim().Length > 3000)
+            return BadRequest(new { message = "Confirmá monto, plazo y descripción de la propuesta." });
+        var proyecto = await db.Proyectos.SingleAsync(p => p.Id == cotizacion.ProyectoId, ct);
+        if (proyecto.Estado is not (EstadoProyecto.Publicado or EstadoProyecto.EnPropuestas) || cotizacion.Estado != "Activa")
+            return Conflict(new { message = "El proyecto o la cotización ya no admite una propuesta." });
+        var perfil = await db.PerfilesConstructor.SingleOrDefaultAsync(c => c.UsuarioId == usuarioId, ct);
+        if (perfil is null) return Forbid();
+        cotizacion.Propuesta = new Propuesta { ProyectoId = proyecto.Id, ConstructorId = perfil.Id,
+            MontoTotal = req.MontoTotal, PlazoEstimadoDias = req.PlazoEstimadoDias,
+            Descripcion = req.Descripcion.Trim(), Estado = EstadoPropuesta.Enviada };
+        cotizacion.Estado = "ConvertidaPropuesta";
+        try { await db.SaveChangesAsync(ct); }
+        catch (DbUpdateConcurrencyException) { return Conflict(new { message = "La cotización cambió. Actualizá la pantalla." }); }
+        if (tx is not null) await tx.CommitAsync(ct);
+        return Ok(new { propuestaId = cotizacion.PropuestaId });
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
@@ -82,12 +149,17 @@ public sealed class CotizacionIAController : ControllerBase
         {
             var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (!int.TryParse(claim, out var userId)) return query.Where(_ => false);
-            query = query.Where(c => c.Proyecto.ClienteId == userId);
+            query = User.IsInRole("Constructor")
+                ? query.Where(c => c.GeneradoPorId == userId)
+                : query.Where(c => c.Proyecto.ClienteId == userId);
         }
         return query;
     }
 
-    private static object Map(CotizacionIA c)
+    private bool PuedeCambiarEstado(CotizacionIA c) => User.IsInRole("Admin") ||
+        (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) && c.GeneradoPorId == userId);
+
+    private object Map(CotizacionIA c)
     {
         var recomendaciones = LeerLista(c.RecomendacionesJson);
         var manoObra = LeerLista(c.ManoDeObraJson);
@@ -100,6 +172,9 @@ public sealed class CotizacionIAController : ControllerBase
             c.Plan,
             c.NombrePlan,
             c.Estado,
+            c.PropuestaId,
+            c.GeneracionId,
+            puedeCambiarEstado = PuedeCambiarEstado(c),
             c.RangoMinimo,
             c.RangoMaximo,
             fechaGeneracion = c.FechaGeneracion,
@@ -129,3 +204,6 @@ public sealed class CotizacionIAController : ControllerBase
         catch (JsonException) { return []; }
     }
 }
+
+public sealed record EstadoCotizacionRequest(string Estado);
+public sealed record ConvertirCotizacionRequest(decimal MontoTotal, int PlazoEstimadoDias, string Descripcion);
