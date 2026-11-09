@@ -172,9 +172,10 @@ public class AppDbContext : IdentityDbContext<Usuario, IdentityRole<int>, int>
             e.Property(c => c.RangoMinimo).HasColumnType("decimal(18,2)");
             e.Property(c => c.RangoMaximo).HasColumnType("decimal(18,2)");
             e.Property(c => c.ResumenIA).HasMaxLength(5000);
-            e.Property(c => c.Estado).HasMaxLength(40).HasDefaultValue("Activa");
+            e.Property(c => c.Estado).HasMaxLength(40).HasDefaultValue("Activa").IsConcurrencyToken();
             e.Property(c => c.Version).HasDefaultValue(1);
             e.Property(c => c.PropuestaId).IsConcurrencyToken();
+            e.HasIndex(c => new { c.ProyectoId, c.GeneracionId });
             e.HasOne(c => c.Propuesta).WithMany().HasForeignKey(c => c.PropuestaId).OnDelete(DeleteBehavior.NoAction);
 
             // Múltiples cotizaciones por proyecto (historial)

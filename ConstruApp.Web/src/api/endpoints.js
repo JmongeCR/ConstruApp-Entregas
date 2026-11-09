@@ -57,7 +57,7 @@ export const cotizacionIAApi = {
   dashboard:       (top = 5)      => api.get('/cotizacion-ia/dashboard', { params: { top } }),
   getById:         (id)           => api.get(`/cotizacion-ia/${id}`),
   // Por proyecto
-  getByProyecto:   (pid)          => api.get(`/cotizacion-ia/proyecto/${pid}`),
+  getByProyecto:   (pid, cotizacionId) => api.get(`/cotizacion-ia/proyecto/${pid}`, { params: { cotizacionId } }),
   getHistorial:    (pid)          => api.get(`/cotizacion-ia/proyecto/${pid}/historial`),
   // Generación
   generar:         (pid, payload) => api.post(`/cotizacion-ia/generar/${pid}`, payload ?? {}),

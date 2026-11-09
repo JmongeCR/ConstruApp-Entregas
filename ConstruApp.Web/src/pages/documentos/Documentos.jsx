@@ -245,11 +245,33 @@ function EditDialog({ open, doc, onClose, onUpdated }) {
   const [fileData, setFileData] = useState(null);
   const [saving, setSaving]   = useState(false);
   const [error, setError]     = useState('');
+  const [version, setVersion] = useState(null);
+  const [conflicto, setConflicto] = useState(false);
+  const [actual, setActual] = useState(null);
+  const [consultando, setConsultando] = useState(false);
 
   useEffect(() => {
     if (doc) setForm({ nombre: doc.nombreArchivo ?? '', categoria: doc.categoria ?? 'Otro', descripcion: doc.descripcion ?? '' });
     setFileData(null); setError('');
+    setVersion(doc?.version ?? null); setConflicto(false); setActual(null);
   }, [doc]);
+
+  async function consultarActual() {
+    setConsultando(true);
+    try { const { data } = await documentosApi.getById(doc.id); setActual(data); }
+    catch { setError('No se pudo consultar la versión actual. Tus cambios siguen en el formulario.'); }
+    finally { setConsultando(false); }
+  }
+
+  async function descargarActual() {
+    try {
+      const { data } = await documentosApi.descargar(doc.id);
+      const url = URL.createObjectURL(data);
+      const enlace = document.createElement('a');
+      enlace.href = url; enlace.download = actual.nombreArchivo;
+      enlace.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch { setError('No se pudo descargar la versión actual. Tus cambios siguen en el formulario.'); }
+  }
 
   function onFileChange(e) {
     const file = e.target.files?.[0];
@@ -264,6 +286,7 @@ function EditDialog({ open, doc, onClose, onUpdated }) {
     setSaving(true); setError('');
     try {
       await documentosApi.update(doc.id, {
+        Version:       version,
         NombreArchivo: form.nombre.trim(),
         Categoria:     form.categoria,
         Descripcion:   form.descripcion.trim() || null,
@@ -272,6 +295,7 @@ function EditDialog({ open, doc, onClose, onUpdated }) {
       onUpdated();
       onClose();
     } catch (err) {
+      if (err.response?.status === 409) { setConflicto(true); setActual(null); }
       setError(err.response?.data?.message ?? 'Error al actualizar. Intente de nuevo.');
     } finally {
       setSaving(false);
@@ -284,6 +308,22 @@ function EditDialog({ open, doc, onClose, onUpdated }) {
       <DialogTitle sx={{ fontSize: 15, fontWeight: 700, pb: 1.5 }}>Editar documento</DialogTitle>
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '12px !important' }}>
         {error && <Alert severity="error" sx={{ py: 0.5, fontSize: 12.5 }}>{error}</Alert>}
+        {conflicto && <Box sx={{ p: 2, bgcolor: '#FFFBEB', borderRadius: 1 }}>
+          <Typography variant="body2">Tus campos y el archivo seleccionado se conservan. Consultá la versión actual antes de volver a guardar.</Typography>
+          <Button disabled={consultando} onClick={consultarActual}>
+            {consultando ? 'Consultando…' : 'Consultar versión actual'}
+          </Button>
+          {actual && <>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+              {`Versión actual: ${actual.version}\nNombre: ${actual.nombreArchivo}\nCategoría: ${actual.categoria}\nDescripción: ${actual.descripcion || 'Sin descripción'}`}
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 1 }}>El contenido del archivo también puede haber cambiado. Si guardás, se aplicarán los campos de tu formulario y el archivo nuevo que hayas seleccionado.</Typography>
+            <Button onClick={descargarActual}>Descargar versión actual</Button>
+            <Button onClick={() => { setVersion(actual.version); setConflicto(false); setError(''); setActual(null); }}>
+              Comparé los cambios; usar esta versión como base
+            </Button>
+          </>}
+        </Box>}
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5,
           bgcolor: '#F8FAFC', borderRadius: '7px', border: '1px solid #E2E8F0' }}>
@@ -291,7 +331,7 @@ function EditDialog({ open, doc, onClose, onUpdated }) {
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography fontSize={13} fontWeight={600} noWrap>{doc.nombreArchivo}</Typography>
             <Typography fontSize={11.5} color="text.secondary">
-              v{doc.version} · {fmtBytes(doc.tamanioBytes)}
+              v{version} · {fmtBytes(doc.tamanioBytes)}
             </Typography>
           </Box>
           <Button size="small" variant="outlined" onClick={() => fileRef.current?.click()}
@@ -319,7 +359,7 @@ function EditDialog({ open, doc, onClose, onUpdated }) {
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
         <Button onClick={onClose} disabled={saving} size="small">Cancelar</Button>
-        <Button variant="contained" size="small" onClick={handleSave} disabled={saving}
+        <Button variant="contained" size="small" onClick={handleSave} disabled={saving || conflicto}
           startIcon={saving ? <CircularProgress size={12} color="inherit" /> : null}>
           {saving ? 'Guardando…' : 'Guardar cambios'}
         </Button>

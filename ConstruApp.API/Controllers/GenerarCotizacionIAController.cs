@@ -89,12 +89,15 @@ public sealed class GenerarCotizacionIAController(
             return Conflict(new { message = "El proyecto cambió mientras se generaban los planes. Revisá y validá sus datos." });
 
         var userId = UserId;
+        var generacionId = Guid.NewGuid();
+        var fechaGeneracion = DateTime.UtcNow;
         var cotizaciones = new List<CotizacionIA>();
         foreach (var plan in planes)
         {
             var cotizacion = new CotizacionIA
             {
                 ProyectoId = proyectoId, Plan = plan.Plan, NombrePlan = plan.NombrePlan,
+                GeneracionId = generacionId, FechaGeneracion = fechaGeneracion,
                 RangoMinimo = decimal.Round(plan.Total * 0.9m, 2),
                 RangoMaximo = decimal.Round(plan.Total * 1.1m, 2),
                 ResumenIA = plan.Resumen, TipoProyectoIA = proyecto.TipoProyecto!.Value.ToString(),
@@ -116,7 +119,7 @@ public sealed class GenerarCotizacionIAController(
             "GenerarCotizacionIA", "Proyectos", proyectoId.ToString(), $"Generados {cotizaciones.Count} planes.");
         return Ok(cotizaciones.Select(c => new
         {
-            c.Id, c.ProyectoId, c.Plan, c.NombrePlan, c.RangoMinimo, c.RangoMaximo,
+            c.Id, c.ProyectoId, c.GeneracionId, c.Plan, c.NombrePlan, c.RangoMinimo, c.RangoMaximo,
             c.ResumenIA, c.TipoProyectoIA, c.DuracionEstimada, c.FechaGeneracion, c.Version,
             lineas = c.Lineas.Select(l => new { l.Id, l.Descripcion, categoria = l.Categoria.ToString(),
                 l.Cantidad, l.Unidad, l.PrecioUnitario, l.PrecioTotal, l.EsManoDeObra })

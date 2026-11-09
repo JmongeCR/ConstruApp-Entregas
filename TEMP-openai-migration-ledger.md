@@ -21,3 +21,12 @@ Verificación completada el 9 de noviembre: 145/145 pruebas automatizadas y comp
 
 - https://developers.openai.com/api/docs/guides/structured-outputs
 - https://developers.openai.com/api/docs/guides/file-inputs
+
+Revisión del PR #19: 151/151 pruebas correctas después de separar generaciones, restringir
+la edición al autor/Admin y proteger los estados y documentos contra sobrescrituras.
+La migración de generaciones se aplicó en SQL Server Express local y coincide con el modelo.
+Se verificaron por HTTP los permisos, la consulta de generaciones y registros antiguos, y
+el rechazo/reintento de documentos con versión desactualizada. En navegador se comprobó el
+plan histórico seleccionado, la generación más reciente y la conservación del formulario al
+comparar una edición simultánea. Estas comprobaciones usaron datos ficticios y no necesitaron
+nuevas llamadas a OpenAI; la generación de grupos también se probó con respuestas simuladas.

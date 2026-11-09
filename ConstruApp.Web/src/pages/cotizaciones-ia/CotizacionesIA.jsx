@@ -102,7 +102,7 @@ function AccionesMenu({ row, onRefresh, onToast, onComparar, comparando }) {
       <Menu anchorEl={anchor} open={Boolean(anchor)} onClose={() => setAnchor(null)}
         PaperProps={{ sx: { minWidth: 200, borderRadius: 1.5, border: '1px solid #E5E7EB' } }}>
 
-        <MenuItem dense onClick={() => { setAnchor(null); navigate(`/cotizacion/${row.proyectoId}`); }}>
+        <MenuItem dense onClick={() => { setAnchor(null); navigate(`/cotizacion/${row.proyectoId}?cotizacionId=${row.id}`); }}>
           <VisibilityIcon sx={{ fontSize: 16, mr: 1.5, color: '#64748B' }} /> Ver cotización
         </MenuItem>
 
@@ -130,7 +130,7 @@ function AccionesMenu({ row, onRefresh, onToast, onComparar, comparando }) {
 
         <Divider />
 
-        {usuario?.rol === 'Constructor' && row.estado === 'Activa' && <MenuItem dense onClick={async () => {
+        {usuario?.rol === 'Constructor' && row.puedeCambiarEstado && row.estado === 'Activa' && <MenuItem dense onClick={async () => {
           setAnchor(null);
           try { const { data } = await cotizacionIAApi.getById(row.id); setConvertir(data); }
           catch { onToast('No se pudo cargar la cotización.', 'error'); }
@@ -166,12 +166,12 @@ function AccionesMenu({ row, onRefresh, onToast, onComparar, comparando }) {
 
         <Divider />
 
-        {row.estado === 'Activa' ? (
+        {row.puedeCambiarEstado && row.estado === 'Activa' ? (
           <MenuItem dense onClick={() => accion(() => cotizacionIAApi.cambiarEstado(row.id, 'Archivada'), 'Cotización archivada')}>
             <ArchiveIcon sx={{ fontSize: 16, mr: 1.5, color: '#94A3B8' }} />
             <Typography fontSize={13} color="text.secondary">Archivar</Typography>
           </MenuItem>
-        ) : row.estado === 'Archivada' ? (
+        ) : row.puedeCambiarEstado && row.estado === 'Archivada' ? (
           <MenuItem dense onClick={() => accion(() => cotizacionIAApi.cambiarEstado(row.id, 'Activa'), 'Cotización reactivada')}>
             <UnarchiveIcon sx={{ fontSize: 16, mr: 1.5, color: '#2563EB' }} />
             <Typography fontSize={13} color="#2563EB">Reactivar</Typography>

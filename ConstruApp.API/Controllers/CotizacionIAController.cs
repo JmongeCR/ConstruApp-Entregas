@@ -21,10 +21,19 @@ public sealed class CotizacionIAController : ControllerBase
     public CotizacionIAController(IUnitOfWork uow) => _uow = uow;
 
     [HttpGet("proyecto/{proyectoId:int}")]
-    public async Task<IActionResult> PorProyecto(int proyectoId)
+    public async Task<IActionResult> PorProyecto(int proyectoId, [FromQuery] int? cotizacionId = null)
     {
-        var rows = await QueryVisible().Where(c => c.ProyectoId == proyectoId)
-            .OrderByDescending(c => c.FechaGeneracion).ThenByDescending(c => c.Id).ToListAsync();
+        if (cotizacionId is <= 0) return BadRequest();
+        var query = QueryVisible().Where(c => c.ProyectoId == proyectoId);
+        var elegida = cotizacionId.HasValue
+            ? await query.FirstOrDefaultAsync(c => c.Id == cotizacionId.Value)
+            : await query.OrderByDescending(c => c.FechaGeneracion).ThenByDescending(c => c.Id).FirstOrDefaultAsync();
+        if (elegida is null) return cotizacionId.HasValue ? NotFound() : Ok(Array.Empty<object>());
+        // Los registros anteriores sin generación se consultan individualmente.
+        var rows = await query.Where(c => elegida.GeneracionId.HasValue
+                ? c.GeneracionId == elegida.GeneracionId && c.GeneradoPorId == elegida.GeneradoPorId
+                : c.Id == elegida.Id)
+            .OrderBy(c => c.Id).ToListAsync();
         return Ok(rows.Select(Map));
     }
 
@@ -32,12 +41,17 @@ public sealed class CotizacionIAController : ControllerBase
     public async Task<IActionResult> CambiarEstado(int id, EstadoCotizacionRequest req)
     {
         if (req.Estado is not ("Activa" or "Archivada")) return BadRequest();
-        var cotizacion = await QueryVisible().FirstOrDefaultAsync(c => c.Id == id);
+        if (!await QueryVisible().AnyAsync(c => c.Id == id)) return NotFound();
+        // Cargar solo la entidad que se modifica, sin adjuntar el grafo de lectura.
+        var cotizacion = await _uow.CotizacionesIA.GetByIdAsync(id);
         if (cotizacion is null) return NotFound();
-        if (cotizacion.PropuestaId.HasValue) return Conflict(new { message = "La cotización ya fue convertida en propuesta." });
+        if (!PuedeCambiarEstado(cotizacion)) return Forbid();
+        if (cotizacion.PropuestaId.HasValue || cotizacion.Estado is not ("Activa" or "Archivada"))
+            return Conflict(new { message = "La cotización ya no permite este cambio de estado." });
         cotizacion.Estado = req.Estado;
-        await _uow.CotizacionesIA.UpdateAsync(cotizacion);
-        await _uow.SaveChangesAsync();
+        try { await _uow.SaveChangesAsync(); }
+        catch (DbUpdateConcurrencyException)
+        { return Conflict(new { message = "La cotización cambió mientras la actualizabas. Revisá su estado actual." }); }
         return NoContent();
     }
 
@@ -142,7 +156,10 @@ public sealed class CotizacionIAController : ControllerBase
         return query;
     }
 
-    private static object Map(CotizacionIA c)
+    private bool PuedeCambiarEstado(CotizacionIA c) => User.IsInRole("Admin") ||
+        (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) && c.GeneradoPorId == userId);
+
+    private object Map(CotizacionIA c)
     {
         var recomendaciones = LeerLista(c.RecomendacionesJson);
         var manoObra = LeerLista(c.ManoDeObraJson);
@@ -156,6 +173,8 @@ public sealed class CotizacionIAController : ControllerBase
             c.NombrePlan,
             c.Estado,
             c.PropuestaId,
+            c.GeneracionId,
+            puedeCambiarEstado = PuedeCambiarEstado(c),
             c.RangoMinimo,
             c.RangoMaximo,
             fechaGeneracion = c.FechaGeneracion,

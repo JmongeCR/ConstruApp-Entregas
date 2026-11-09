@@ -92,6 +92,18 @@ una ruta autenticada. Ese directorio requiere almacenamiento persistente en el d
 Las asignaciones de personal usan empleados activos de la empresa contratada. Un empleado
 asignado a otra obra en curso se informa como no disponible.
 
+`RevisionPr19Generaciones` agrega un identificador compartido por los tres planes de cada
+generación nueva. El detalle por proyecto devuelve la generación más reciente; el parámetro
+`cotizacionId` permite abrir una generación anterior y seleccionar el plan exacto del historial.
+Los registros existentes sin identificador se conservan y se consultan individualmente.
+Archivar/reactivar requiere autoría o rol Admin y modifica únicamente el estado de la cotización.
+Los registros sin autor solo pueden ser administrados por Admin. Estado y PropuestaId tienen
+control de concurrencia para impedir que archivar y convertir se sobrescriban.
+
+Las ediciones de documentos requieren `version`, obtenida al abrir la ficha. Una versión
+desactualizada devuelve 409 sin reemplazar el archivo o los metadatos; la pantalla conserva
+el formulario y permite consultar/descargar la versión actual antes de confirmar una nueva base.
+
 La migración `EntrevistasIa` guarda historial, ficha, hallazgos y alcance. Para estimar costos
 se usan los rangos de `EstimacionPrecios:PorTipo`. Para estimar plazo y tamaño de cuadrilla se
 configuran `MinM2Dia`, `MaxM2Dia` y `Personas` en `EstimacionAlcance:PorTipo:<TipoProyecto>`.

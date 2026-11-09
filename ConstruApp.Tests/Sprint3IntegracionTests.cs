@@ -137,10 +137,15 @@ public sealed class Sprint3IntegracionTests
         Assert.IsType<OkObjectResult>(await controller.Generar(1, f.Db, default));
         Assert.Equal(new[] { 1, 2, 3 }, await f.Db.CotizacionesIA.OrderBy(c => c.Version).Select(c => c.Version).ToArrayAsync());
         Assert.All(await f.Db.LineasCotizacion.ToListAsync(), l => Assert.Equal(150000m, l.PrecioTotal));
+        var primera = await f.Db.CotizacionesIA.Select(c => c.GeneracionId).Distinct().SingleAsync();
+        Assert.NotNull(primera);
+        Assert.IsType<OkObjectResult>(await controller.Generar(1, f.Db, default));
+        Assert.Equal(2, await f.Db.CotizacionesIA.Select(c => c.GeneracionId).Distinct().CountAsync());
+        Assert.Equal(6, await f.Db.CotizacionesIA.CountAsync());
         f.Proyecto.Titulo = "Título modificado";
         await f.Db.SaveChangesAsync();
         Assert.IsType<BadRequestObjectResult>(await controller.Generar(1, f.Db, default));
-        Assert.Equal(1, handler.Llamadas);
+        Assert.Equal(2, handler.Llamadas);
     }
 
     [Fact]

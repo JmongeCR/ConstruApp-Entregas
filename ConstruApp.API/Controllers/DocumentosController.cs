@@ -85,6 +85,10 @@ public sealed class DocumentosController(IUnitOfWork uow, AccesoProyectoService 
         var proyecto = await uow.Proyectos.GetByIdAsync(archivo?.ProyectoId ?? req.ProyectoId);
         if (proyecto is null) return NotFound();
         if (!await acceso.PuedeEditarDocumentosAsync(proyecto, User)) return Forbid();
+        if (id.HasValue && (req.Version is null or <= 0))
+            return BadRequest(new { message = "Indicá la versión del documento que abriste antes de editarlo." });
+        if (archivo is not null && req.Version != archivo.Version)
+            return Conflict(new { message = "Otra persona modificó el documento. Compará tus cambios con la versión actual antes de guardar." });
         var nombre = req.NombreArchivo?.Trim();
         if (string.IsNullOrEmpty(nombre) || nombre.Length > 180 || nombre.IndexOfAny(['/', '\\']) >= 0 ||
             req.Descripcion?.Trim().Length > 300 || !Categorias.Contains(req.Categoria ?? ""))
@@ -209,4 +213,4 @@ public sealed class DocumentosController(IUnitOfWork uow, AccesoProyectoService 
 }
 
 public sealed record DocumentoRequest(int ProyectoId, string? NombreArchivo, string? Base64,
-    string? TipoArchivo, string? Categoria, string? Descripcion);
+    string? TipoArchivo, string? Categoria, string? Descripcion, int? Version = null);

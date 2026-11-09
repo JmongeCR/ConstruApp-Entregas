@@ -351,6 +351,7 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Estado")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(40)
@@ -359,6 +360,9 @@ namespace ConstruApp.Infrastructure.Data.Migrations
 
                     b.Property<DateTime>("FechaGeneracion")
                         .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("GeneracionId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int?>("GeneradoPorId")
                         .HasColumnType("int");
@@ -412,6 +416,8 @@ namespace ConstruApp.Infrastructure.Data.Migrations
                     b.HasIndex("PropuestaId");
 
                     b.HasIndex("ProyectoId");
+
+                    b.HasIndex("ProyectoId", "GeneracionId");
 
                     b.ToTable("CotizacionesIA");
                 });

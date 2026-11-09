@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box, Typography, Card, CardContent, Chip, Button,
   LinearProgress, Alert, Divider, Avatar, Tooltip,
@@ -47,6 +47,8 @@ export default function CotizacionDetalle() {
   const [validando, setValidando] = useState(false);
   const [recomendaciones, setRecomendaciones] = useState('');
   const { proyectoId } = useParams();
+  const [searchParams] = useSearchParams();
+  const cotizacionSeleccionada = searchParams.get('cotizacionId');
   const navigate       = useNavigate();
   const fileRef        = useRef(null);
 
@@ -58,25 +60,29 @@ export default function CotizacionDetalle() {
   const [error,       setError]       = useState('');
   const [imagenes,    setImagenes]    = useState([]);
 
-  const cargarPlanes = (data) => {
+  const cargarPlanes = (data, seleccionada) => {
     // El API devuelve array; si es objeto único lo envolvemos
-    const arr = Array.isArray(data) ? data : [data];
+    const arr = Array.isArray(data) ? [...data] : [data];
     const orden = { economico: 0, estandar: 1, premium: 2 };
     arr.sort((a, b) => (orden[a.plan] ?? 1) - (orden[b.plan] ?? 1));
     setPlanes(arr);
     // Seleccionar pestaña "estandar" por defecto
-    const idx = arr.findIndex(p => p.plan === 'estandar');
+    const idx = seleccionada ? arr.findIndex(p => String(p.id) === String(seleccionada))
+      : arr.findIndex(p => p.plan === 'estandar');
     setTabActivo(idx >= 0 ? idx : 0);
   };
 
   useEffect(() => {
+    let activo = true;
+    setLoading(true); setError(''); setPlanes([]);
     Promise.all([
-      cotizacionIAApi.getByProyecto(proyectoId)
-        .then(r => cargarPlanes(r.data))
-        .catch(() => {}),
-      proyectosApi.getById(proyectoId).then(r => setProyecto(r.data)).catch(() => {}),
-    ]).finally(() => setLoading(false));
-  }, [proyectoId]);
+      cotizacionIAApi.getByProyecto(proyectoId, cotizacionSeleccionada || undefined)
+        .then(r => { if (activo) cargarPlanes(r.data, cotizacionSeleccionada); }),
+      proyectosApi.getById(proyectoId).then(r => { if (activo) setProyecto(r.data); }),
+    ]).catch(() => { if (activo) setError('No se pudo cargar la cotización seleccionada. Volvé al historial e intentá de nuevo.'); })
+      .finally(() => { if (activo) setLoading(false); });
+    return () => { activo = false; };
+  }, [proyectoId, cotizacionSeleccionada]);
 
   // Plan actualmente visible
   const cotizacion = planes[tabActivo] ?? null;
@@ -97,7 +103,8 @@ export default function CotizacionDetalle() {
     try {
       const payload = imagenes.length > 0 ? { imagenesBase64: imagenes } : undefined;
       const { data } = await cotizacionIAApi.generar(proyectoId, payload);
-      cargarPlanes(data);
+      const elegida = data.find(p => p.plan === 'estandar') ?? data[0];
+      navigate(`/cotizacion/${proyectoId}?cotizacionId=${elegida.id}`, { replace: true });
       setImagenes([]);
     } catch (e) {
       const errors = e.response?.data?.errors;
@@ -136,7 +143,7 @@ export default function CotizacionDetalle() {
         </Button>
         {proyecto?.validacionIaVigente && <Chip label="Validación vigente" color="success" size="small" sx={{ ml: 1 }} />}
         {recomendaciones && <Alert severity="info" sx={{ mt: 1 }}>{recomendaciones}</Alert>}
-        {usuario?.rol === 'Constructor' && cotizacion &&
+        {usuario?.rol === 'Constructor' && cotizacion?.puedeCambiarEstado &&
           (cotizacion.estado ?? 'Activa') === 'Activa' &&
           ['Publicado', 'EnPropuestas'].includes(proyecto?.estado) && <Button sx={{ ml: 1 }} variant="contained"
           onClick={async () => {
@@ -248,7 +255,7 @@ export default function CotizacionDetalle() {
               const iconos = { economico: '🟢', estandar: '🟡', premium: '🔴' };
               return (
                 <Tab
-                  key={p.plan}
+                  key={p.id}
                   label={
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.3 }}>
                       <Typography fontSize={18}>{iconos[p.plan] ?? '⚪'}</Typography>
