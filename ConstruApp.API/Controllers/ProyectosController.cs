@@ -372,6 +372,102 @@ public class ProyectosController : ControllerBase
         return (errores, tipo, propiedad);
     }
 
+    // GET api/proyectos/{id}/fotos
+    [HttpGet("{id:int}/fotos")]
+    public async Task<IActionResult> GetFotos(int id)
+    {
+        var proyecto = await _uow.Proyectos.GetByIdAsync(id);
+        if (proyecto is null) return NotFound(new { message = "Proyecto no encontrado." });
+
+        var avances = await _uow.AvancesObra.FindAsync(a => a.ProyectoId == id);
+        var avanceIds = avances.Select(a => a.Id).ToArray();
+        var fotos = (await _uow.FotosAvance.FindAsync(f => avanceIds.Contains(f.AvanceObraId)))
+            .OrderByDescending(f => f.FechaSubida)
+            .Select(f => new { f.Id, f.Url, nombreArchivo = f.NombreArchivo, f.Tipo, f.TamanioBytes, f.FechaSubida });
+        return Ok(fotos);
+    }
+
+    // POST api/proyectos/{id}/fotos
+    [HttpPost("{id:int}/fotos")]
+    [Authorize(Roles = "Constructor,Admin")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<IActionResult> SubirFoto(int id, [FromBody] SubirFotoRequest req)
+    {
+        var proyecto = await _uow.Proyectos.GetByIdAsync(id);
+        if (proyecto is null) return NotFound(new { message = "Proyecto no encontrado." });
+
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+        // Obtener el perfil del constructor
+        PerfilConstructor? perfil;
+        if (User.IsInRole("Admin"))
+        {
+            var asignacion = (await _uow.Propuestas.FindAsync(p => p.ProyectoId == id && p.Estado == EstadoPropuesta.Aceptada)).FirstOrDefault();
+            perfil = asignacion is null ? null : await _uow.PerfilesConstructor.GetByIdAsync(asignacion.ConstructorId);
+            if (perfil is null) return BadRequest(new { message = "No hay constructor asignado." });
+        }
+        else
+        {
+            perfil = (await _uow.PerfilesConstructor.FindAsync(p => p.UsuarioId == userId)).FirstOrDefault();
+            if (perfil is null) return Forbid();
+        }
+
+        // Decodificar base64
+        if (string.IsNullOrWhiteSpace(req.Base64))
+            return BadRequest(new { message = "Imagen requerida." });
+
+        byte[] bytes;
+        string mimeType;
+        try
+        {
+            var data = req.Base64;
+            if (data.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                var comma = data.IndexOf(',');
+                if (comma < 0) return BadRequest(new { message = "Formato de imagen inválido." });
+                var meta = data[..comma];
+                var sep = meta.IndexOf(';');
+                mimeType = sep > 5 ? meta[5..sep].ToLowerInvariant() : req.MimeType ?? "image/jpeg";
+                data = data[(comma + 1)..];
+            }
+            else mimeType = req.MimeType ?? "image/jpeg";
+            bytes = Convert.FromBase64String(data);
+        }
+        catch { return BadRequest(new { message = "Formato de imagen inválido." }); }
+
+        var extension = mimeType switch { "image/jpeg" => ".jpg", "image/png" => ".png", "image/webp" => ".webp", _ => ".jpg" };
+        var nombre = $"{Guid.NewGuid():N}{extension}";
+        var webRoot = Request.HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().WebRootPath;
+        var carpeta = Path.Combine(webRoot ?? "", "uploads", "avances");
+        Directory.CreateDirectory(carpeta);
+        var rutaFisica = Path.Combine(carpeta, nombre);
+        await System.IO.File.WriteAllBytesAsync(rutaFisica, bytes);
+
+        // Buscar o crear el avance "galería" para este proyecto
+        const string tituloGaleria = "__galeria__";
+        var avanceGaleria = (await _uow.AvancesObra.FindAsync(a => a.ProyectoId == id && a.Titulo == tituloGaleria && a.ConstructorId == perfil.Id)).FirstOrDefault();
+        if (avanceGaleria is null)
+        {
+            avanceGaleria = new AvanceObra { ProyectoId = id, ConstructorId = perfil.Id, Titulo = tituloGaleria, Descripcion = "", PorcentajeAvance = 0, Fecha = DateTime.UtcNow };
+            await _uow.AvancesObra.AddAsync(avanceGaleria);
+            await _uow.SaveChangesAsync();
+        }
+
+        var foto = new FotoAvance
+        {
+            AvanceObraId = avanceGaleria.Id,
+            Url = $"/uploads/avances/{nombre}",
+            NombreArchivo = req.NombreOriginal ?? nombre,
+            Tipo = "foto",
+            TamanioBytes = bytes.Length,
+            FechaSubida = DateTime.UtcNow,
+        };
+        await _uow.FotosAvance.AddAsync(foto);
+        await _uow.SaveChangesAsync();
+
+        return Ok(new { foto.Id, foto.Url, nombreArchivo = foto.NombreArchivo, foto.Tipo, foto.TamanioBytes, foto.FechaSubida });
+    }
+
     private static void AplicarBorrador(Proyecto proyecto, ProyectoBorradorRequest req,
         TipoProyecto? tipo, Propiedad? propiedad)
     {
@@ -459,6 +555,7 @@ public record ProyectoRequest(
 );
 
 public record CambiarEstadoRequest(string Estado);
+public record SubirFotoRequest(string Base64, string? MimeType, string? NombreOriginal);
 
 public record ProyectoBorradorRequest(
     string? Titulo = null, string? Descripcion = null, string? TipoProyecto = null,

@@ -65,7 +65,7 @@ public sealed class AvancesController : ControllerBase
         if (proyecto is null) return NotFound(new { message = "No encontramos el proyecto." });
         if (!await PuedeVerProyecto(proyecto)) return Forbid();
 
-        var avances = (await _uow.AvancesObra.FindAsync(a => a.ProyectoId == proyectoId))
+        var avances = (await _uow.AvancesObra.FindAsync(a => a.ProyectoId == proyectoId && a.Titulo != "__galeria__"))
             .OrderByDescending(a => a.Fecha).ThenByDescending(a => a.Id).ToList();
         var ids = avances.Select(a => a.Id).ToArray();
         var fotos = (await _uow.FotosAvance.FindAsync(f => ids.Contains(f.AvanceObraId))).ToLookup(f => f.AvanceObraId);
